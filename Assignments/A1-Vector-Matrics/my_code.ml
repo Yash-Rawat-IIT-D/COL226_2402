@@ -12,38 +12,18 @@ let rec create (n: int) (x: float) : vector =
     | _ -> x::(create (n-1) x);;
 
 
-let rec create_tail_rec (n: int) (x:float) : vector = 
-  let rec create_tail_rec_helper (n: int) (x: float) (acc: vector) : vector = 
-    if n < 1 then 
-      raise DimensionError
-    else
-      match n with
-      | 1 -> x::acc
-      | _ -> create_tail_rec_helper (n-1) x (x::acc)
-  in
-  create_tail_rec_helper n x [];;
-
 let rec dim (vec_float : vector) : int = 
   match vec_float with
   | [] -> raise DimensionError  (* Not the base case if we assume that a valid vector of dimension >= 1 is being passed to dim *)
   | x::[] -> 1
   | x::xs -> 1 + dim xs;; 
 
-let rec dim_tail_rec (vec_float : vector) : int = 
-  let rec dim_tail_rec_helper (vec_float : vector) (acc : int) : int = 
-    match vec_float with
-    | [] -> acc
-    | x::[] -> acc + 1
-    | x::xs -> dim_tail_rec_helper xs (acc + 1)
-  in
-  dim_tail_rec_helper vec_float 0;;
-
 let rec is_legal_dim (vec_float : vector) : bool  = 
   match vec_float with
-  | [] -> false             (* Redundant if we assume that a valid vector of dimension >= 1 is being passed to dim *)
+  | [] -> false             
   | x::xs -> true
-
 ;;
+
 (* PS : Is dimension checking to be done here ?  *)
 let rec is_zero (v : vector) : bool = 
   if(not (is_legal_dim v)) then
@@ -53,19 +33,6 @@ let rec is_zero (v : vector) : bool =
     | [] -> raise DimensionError (*This condition is added for completness of matching and would we be triggered before *)
     | 0.0 :: [] -> true
     | x::xs -> if x = 0.0 then is_zero xs else false;; 
-
-
-let rec is_zero_tail_rec (v : vector) : bool = 
-  if(not (is_legal_dim v)) then
-    raise DimensionError
-  else
-    let rec is_zero_tail_rec_helper (v : vector) : bool = 
-      match v with
-      | [] -> raise DimensionError
-      | 0.0 :: [] -> true
-      | x::xs -> if x = 0.0 then is_zero_tail_rec_helper xs else false
-    in
-    is_zero_tail_rec_helper v;;
 
 let rec unit (n : int) (j : int) : vector = 
   if(n < 1) then 
@@ -110,13 +77,15 @@ let rec addv (v1 : vector) (v2 : vector) : vector =
   match v1, v2 with
   | x1::[], x2::[] -> (x1 +. x2)::[]
   | x1::xs1, x2::xs2 -> (x1 +. x2)::(addv xs1 xs2)
-  | _ -> raise DimensionError;; 
+  | _ -> raise DimensionError;;                     (* This condition handles vector of unequal dimensions *)
+                                                    (* Since addv is only valid if dimension of both vectors is same and >=1 *)
   
 let rec dot_prod (v1 : vector) (v2 : vector) : float = 
   match v1, v2 with
   | x1::[], x2::[] -> x1 *. x2
   | x1::xs1, x2::xs2 -> (x1*.x2) +. (dot_prod xs1 xs2)
-  | _ -> raise DimensionError;;
+  | _ -> raise DimensionError;;                                   (* This condition handles vector of unequal dimensions *)
+                                                          (* Since dot_prod is only valid if dimension of both vectors is same and >=1 *)
 
 (* PS : Is dimension checking to be done here ?  *)
 let rec inv (v : vector) : vector = 
@@ -124,7 +93,7 @@ let rec inv (v : vector) : vector =
     raise DimensionError
   else  
     match v with
-    | [] -> raise DimensionError (*This condition is added for completness of matching and would we be triggered before *)
+    | [] -> raise DimensionError (* This condition is added for completness of matching and would we be triggered before *)
     | x::[] -> (-1.0 *.x)::[]
     | x::xs -> -1.0*.x::(inv xs);;
 
@@ -145,18 +114,24 @@ let in_domain_acos (cos_theta:float) : float =
     cos_theta 
 ;;
 
+
+let fl_eq_scaled (f1 : float) (f2 : float) : bool = 
+  let epsilon = 1e-9 in
+  abs_float(f1 -. f2) < epsilon *. max (1.0) (max (abs_float f1) (abs_float f2))
+  
+
 let angle (v1 : vector) (v2 : vector) : float = 
   let v1_dot_v2 = dot_prod v1 v2 in
-  let len_v1 = length v1 in
-  let len_v2 = length v2 in
-  if(len_v1 == 0.0 || len_v2 == 0.0) then
+  if(is_zero v1 || is_zero v2) then
     raise ZeroVectorError 
   else
-    let cos_theta = v1_dot_v2 /. (len_v1 *. len_v2) in
+    let len_v1 = length v1 in
+    let len_v2 = length v2 in
+    let cos_theta = v1_dot_v2 /. ( len_v1 *. len_v2) in
+
     (* Implementation of acos guarantees  that the angle returned 
     is the smaller one (theta <= pi radians) *)
-    
-    
+  
     let s_cos_theta = in_domain_acos cos_theta in
     acos s_cos_theta
 ;;
@@ -168,47 +143,42 @@ let angle (v1 : vector) (v2 : vector) : float =
 (* ========================================================================== *)
 
 (* Test Cases for Create *)
+
 Printf.printf "==========================================================================\n";;
 Printf.printf "Testing implementation of create : \n";;
 Printf.printf "==========================================================================\n";;
+let test_create () =
+  let vec1 = create 5 3.1415 in
+  let vec2 = create 4 2.7182 in
+  let vec3 = create 6 1.618 in
+  let vec4 = create 1 1.0 in
 
-let n = 5;;
-let create_tc_0 = create n 3.14;;
+  (* Expected Output: [3.1415; 3.1415; 3.1415; 3.1415; 3.1415] *)
+  List.iter (Printf.printf "%0.4f ") vec1;
+  Printf.printf "\n";
 
-(* Expected Output TC_1 : [3.14, 3.14, 3.14, 3.14, 3.14] *)
-List.iter (Printf.printf "%0.2f ") create_tc_0;;
-Printf.printf "\n";;
+  (* Expected Output: [2.7182; 2.7182; 2.7182; 2.7182] *)
+  List.iter (Printf.printf "%0.4f ") vec2;
+  Printf.printf "\n";
 
-let n = 1;;
+  (* Expected Output: [1.618; 1.618; 1.618; 1.618; 1.618; 1.618] *)
+  List.iter (Printf.printf "%0.4f ") vec3;
+  Printf.printf "\n";
 
-let create_tc_1 = create n 2.71;;
-(* Expected Output TC_1 : [2.71] *)
+  (* Expected Output: [1.0] *)
+  List.iter (Printf.printf "%0.4f ") vec4;
+  Printf.printf "\n";
 
-List.iter (Printf.printf "%0.2f ") create_tc_1;;
-Printf.printf "\n";;
+  (* Testing for DimensionError *)
+  try
+    let _ = create 0 1.0 in
+    Printf.printf "Test Case Failed - Error Not Detected \n"
+  with
+  | DimensionError -> Printf.printf "Test Case Passed - DimensionError Detected \n";
 
-let n = 3;;
-let create_tc_2 = create n 1.0;;
-(* Expected Output TC_2 : [1.0, 1.0, 1.0] *)
-
-List.iter (Printf.printf "%0.2f ") create_tc_2;;
-Printf.printf "\n";;
-
-let n = 4;;
-let create_tc_3 = create n (-2.5);;
-(* Expected Output TC_3 : [-2.5, -2.5, -2.5, -2.5] *)
-
-List.iter (Printf.printf "%0.2f ") create_tc_3;;
-Printf.printf "\n";;
-
-try
-  let n = 0 in
-  let _ = create n 2.71 in
-  Printf.printf "Test Case 4 Failed - Error Not Detected \n"
-with
-| DimensionError -> Printf.printf "Test Case Passed - DimensionError Detected \n"
 ;;
 
+test_create ();;
 
 
 (* ========================================================================== *)
@@ -454,6 +424,7 @@ Printf.printf "=================================================================
 (* ========================================================================== *)
 
 (* Test Cases for dot_prod *)
+
 Printf.printf "==========================================================================\n";;
 Printf.printf "Testing implementation of dot_prod : \n";;
 Printf.printf "==========================================================================\n";;
@@ -505,6 +476,267 @@ let test_dot () =
 test_dot ();;
 
 
+(* ========================================================================== *)
+
+(* Test Cases for inv *)
+
+Printf.printf "==========================================================================\n";;
+Printf.printf "Testing implementation of inv : \n";;
+Printf.printf "==========================================================================\n";;
+
+let test_inv () =
+
+  (* Normal cases *)
+  let inv_tc_1 = inv [1456.2424; -124.9094; 414.1455; -1.4447; 5509.561; -4239.413] in
+  (* Expected Output: [-1456.2424; 124.9094; -414.1455; 1.4447; -5509.561; 4239.413] *)
+  List.iter (Printf.printf "%0.4f ") inv_tc_1;
+  Printf.printf "\n";
+
+  let inv_tc_2 = inv [0.0; 0.0; 0.0; 0.0; 0.0; 0.0] in
+  (* Expected Output: [-0.0000; -0.0000; -0.0000; -0.0000; -0.0000; -0.0000] *)
+  List.iter (Printf.printf "%0.4f ") inv_tc_2;
+  Printf.printf "\n";
+
+  let inv_tc_3 = inv [992.5782; -213.291; 127.550; -118.420; 827.241; -914.124; 788.993] in
+  (* Expected Output: [-992.5782; 213.291; -127.550; 118.420; -827.241; 914.124; -788.993] *)
+  List.iter (Printf.printf "%0.4f ") inv_tc_3;
+  Printf.printf "\n";
+
+  let inv_tc_4 = inv [127.334; -214.1422; 879.2133; -219.601; 768.0786; -842.423; 496.221; -140.1001] in
+  (* Expected Output: [-127.3340; 214.1422; -879.2133; 219.6010; -768.0786; 842.4230; -496.2210; 140.1001] *)
+  List.iter (Printf.printf "%0.4f ") inv_tc_4;
+  Printf.printf "\n";
+
+  (* Edge cases for Dimension Error *)
+  try
+    let _ = inv [] in
+    Printf.printf "Test Case Failed - Error Not Detected \n"
+  with
+  | DimensionError -> Printf.printf "Test Case Passed - DimensionError Detected \n";
+;;
+
+test_inv ();;
+
+(* ========================================================================== *)
+
+(* Test Cases for length *)
+
+Printf.printf "==========================================================================\n";;
+Printf.printf "Testing implementation of length : \n";;
+Printf.printf "==========================================================================\n";;
+
+let test_length () =
+  (* Normal cases *)
+  let length_tc_1 = length [3.0; 4.0; 12.0] in
+  (* Expected Output: 13.0000 *)
+  Printf.printf "length_tc_1: %0.4f\n" length_tc_1;
+
+  let length_tc_2 = length [1.0; 2.0; 2.0] in
+  (* Expected Output: 3.0000 *)
+  Printf.printf "length_tc_2: %0.4f\n" length_tc_2;
+
+  let length_tc_3 = length [0.0; 0.0; 0.0] in
+  (* Expected Output: 0.0000 *)
+  Printf.printf "length_tc_3: %0.4f\n" length_tc_3;
+
+  let length_tc_4 = length [1.1234; 2.2345; 3.3456; 4.4567] in
+  (* Expected Output: 6.1082 *)
+  Printf.printf "length_tc_4: %0.4f\n" length_tc_4;
+
+  (* Edge cases for Dimension Error *)
+  try
+    let _ = length [] in
+    Printf.printf "Test Case Failed - Error Not Detected \n"
+  with
+  | DimensionError -> Printf.printf "Test Case Passed - DimensionError Detected \n";
+;;
+
+test_length ();;
+
+(* ========================================================================== *)
+
+(* Test Cases for angle *)
+
+Printf.printf "==========================================================================\n";;
+Printf.printf "Testing implementation of angle : \n";;
+Printf.printf "==========================================================================\n";;
+
+let test_angle () =
+  (* Parallel vectors *)
+  let angle_tc_1 = angle [1.0; 2.0; -3.0] [2.5; 5.0; -7.5] in
+  (* Expected Output: 0.00 *)
+  Printf.printf "angle_tc_1: %0.2f\n" angle_tc_1;
+
+  (* Anti-parallel vectors *)
+  let angle_tc_2 = angle [8.72; 9.44; 9.56] [-8.72; -9.44; -9.56] in
+  (* Expected Output: 3.14 *)
+  Printf.printf "angle_tc_2: %0.2f\n" angle_tc_2;
+
+  (* Orthogonal vectors *)
+  let angle_tc_3 = angle (unit (6) (5)) (unit (6) (1)) in
+  (* Expected Output: 1.57 *)
+  Printf.printf "angle_tc_3: %0.2f\n" angle_tc_3;
+
+  (* Random vectors *)
+  let angle_tc_4 = angle [1.0; 0.0; 0.0] [1.00; 1.7320; 0.0] in
+  (* Expected Output: 1.05 *)
+  Printf.printf "angle_tc_4: %0.2f\n" angle_tc_4;
+
+  (* Edge cases for ZeroVectorError *)
+  try
+    let _ = angle [0.0; 0.0] [1.0; 2.0] in
+    Printf.printf "Test Case Failed - Error Not Detected \n"
+  with
+  | ZeroVectorError -> Printf.printf "Test Case Passed - ZeroVectorError Detected \n";
+
+  try
+    let _ = angle [1.0; 2.0] [0.0; 0.0] in
+    Printf.printf "Test Case Failed - Error Not Detected \n"
+  with
+  | ZeroVectorError -> Printf.printf "Test Case Passed - ZeroVectorError Detected \n";
+
+  try
+    let _ = angle [0.0; 0.0] [0.0; 0.0] in
+    Printf.printf "Test Case Failed - Error Not Detected \n"
+  with
+  | ZeroVectorError -> Printf.printf "Test Case Passed - ZeroVectorError Detected \n";
+
+  (* Edge cases for Dimension Error *)
+  try
+    let _ = angle [1.0; 2.0; 3.0] [1.0; 2.0] in
+    Printf.printf "Test Case Failed - Error Not Detected \n"
+  with
+  | DimensionError -> Printf.printf "Test Case Passed - DimensionError Detected \n";
+
+  try
+    let _ = angle [1.0; 2.0; 3.0] [] in
+    Printf.printf "Test Case Failed - Error Not Detected \n"
+  with
+  | DimensionError -> Printf.printf "Test Case Passed - DimensionError Detected \n";
+
+  try
+    let _ = angle [] [1.0; 2.0; 3.0] in
+    Printf.printf "Test Case Failed - Error Not Detected \n"
+  with
+  | DimensionError -> Printf.printf "Test Case Passed - DimensionError Detected \n";
+
+  try
+    let _ = angle [] [] in
+    Printf.printf "Test Case Failed - Error Not Detected \n"
+  with
+  | DimensionError -> Printf.printf "Test Case Passed - DimensionError Detected \n";
+;;
+
+test_angle ();;
+
+
+(*
+
+======================================================================================================
+
+              Test Data and Results of testing of all the operations of vector module
+
+======================================================================================================
+
+==========================================================================
+Testing implementation of create : 
+==========================================================================
+3.1415 3.1415 3.1415 3.1415 3.1415 
+2.7182 2.7182 2.7182 2.7182 
+1.6180 1.6180 1.6180 1.6180 1.6180 1.6180 
+1.0000 
+Test Case Passed - DimensionError Detected 
+==========================================================================
+Testing implementation of Dimension : 
+==========================================================================
+dim_tc_1: 3
+dim_tc_2: 3
+dim_tc_3: 3
+dim_tc_4: 4
+Test Case Passed - DimensionError Detected 
+==========================================================================
+Testing implementation of is_Zero : 
+==========================================================================
+is_zero_tc_1: true
+is_zero_tc_2: false
+is_zero_tc_3: false
+is_zero_tc_4: true
+Test Case Passed - DimensionError Detected 
+==========================================================================
+Testing implementation of unit : 
+==========================================================================
+0.00 0.00 1.00 0.00 0.00 
+1.00 0.00 0.00 0.00 
+0.00 0.00 0.00 0.00 0.00 1.00 
+1.00 
+Test Case Passed - DimensionError Detected 
+Test Case Passed - DimensionError Detected 
+Test Case Passed - DimensionError Detected 
+==========================================================================
+Testing implementation of scale : 
+==========================================================================
+2.0000 4.0000 6.0000 
+-3.9338 5.5892 -7.6896 
+0.0000 0.0000 0.0000 
+11.6754 23.4465 31.8681 
+Test Case Passed - DimensionError Detected 
+==========================================================================
+Testing implementation of addv : 
+==========================================================================
+8.9124 11.1246 13.2468 14.4690 16.6912 18.9134 
+1.1111 2.2222 3.3333 4.4444 5.5555 6.6666 
+0.0000 0.0000 0.0000 0.0000 0.0000 0.0000 
+9.9999 8.9999 7.9999 6.9999 5.9999 4.9999 
+Test Case Passed - DimensionError Detected 
+Test Case Passed - DimensionError Detected 
+Test Case Passed - DimensionError Detected 
+Test Case Passed - DimensionError Detected 
+==========================================================================
+Testing implementation of addv : 
+==========================================================================
+==========================================================================
+Testing implementation of dot_prod : 
+==========================================================================
+dot_tc_1: 26.2047
+dot_tc_2: 51.2265
+dot_tc_3: 0.0000
+dot_tc_4: 69.1344
+Test Case Passed - DimensionError Detected 
+Test Case Passed - DimensionError Detected 
+Test Case Passed - DimensionError Detected 
+Test Case Passed - DimensionError Detected 
+==========================================================================
+Testing implementation of inv : 
+==========================================================================
+-1456.2424 124.9094 -414.1455 1.4447 -5509.5610 4239.4130 
+-0.0000 -0.0000 -0.0000 -0.0000 -0.0000 -0.0000 
+-992.5782 213.2910 -127.5500 118.4200 -827.2410 914.1240 -788.9930 
+-127.3340 214.1422 -879.2133 219.6010 -768.0786 842.4230 -496.2210 140.1001 
+Test Case Passed - DimensionError Detected 
+==========================================================================
+Testing implementation of length : 
+==========================================================================
+length_tc_1: 13.0000
+length_tc_2: 3.0000
+length_tc_3: 0.0000
+length_tc_4: 6.1082
+Test Case Passed - DimensionError Detected 
+==========================================================================
+Testing implementation of angle : 
+==========================================================================
+angle_tc_1: 0.00
+angle_tc_2: 3.14
+angle_tc_3: 1.57
+angle_tc_4: 1.05
+Test Case Passed - ZeroVectorError Detected 
+Test Case Passed - ZeroVectorError Detected 
+Test Case Passed - ZeroVectorError Detected 
+Test Case Passed - DimensionError Detected 
+Test Case Passed - DimensionError Detected 
+Test Case Passed - DimensionError Detected 
+Test Case Passed - DimensionError Detected
+
+*)
 
 
 (* 
@@ -624,7 +856,7 @@ Claim : For any vectors u,v such that dim V = dim U = n , u + v = v + u
         (As mentioned u + v is explicitly defined as : add u v , in our module
          and similarly for v + u : add v u, in our module)
 
-Proof : Proof By Structural Induction induction on the structure of the vectors u and v
+Proof : Proof By Structural Induction on the structure of the vectors u and v
         
         Let Inductive Hypothesis be : For any vectors u,v such that dim V = dim U = n >= 1, u + v = v + u
         
@@ -987,6 +1219,172 @@ Inductive Step : Suppose inductive hypothesis holds for some vectors xu and xv s
 
 Thus by (1), (2), and Structural Induction, we have proved that the IH holds i.e.
 for any vectors u and v and scalar b such that dim u = dim v = n >= 1, b * (u + v) = (b * u) + (b * v)
+
+*)
+
+(*
+
+====================================================================================================================
+                                       Additional 3 Properties of Vector Operations :
+====================================================================================================================
+
+====================================================================================================================
+                                        Self Dot Product Non-Negativity of Vectors : 
+====================================================================================================================
+
+Claim : For any vector v such that dim v = n >= 1, dot_prod v v >= 0
+        (As mentioned dot_prod v v is explicitly defined as : dot v v , in our module)
+
+Proof : Proof by Structural Induction on structure of v
+
+Let Inductive Hypothesis be : For any vector v such that dim V = n >= 1, dot_prod v v >= 0
+
+Base Case : v = [v0]
+  
+  Then we have : dot_prod v v = dot_prod [v0] [v0] 
+                             = v0 * v0 >= 0 (Since square of any real number (hence a float as well) is non-negative)
+
+  Hence, the claim holds for the base case  ------ (1)
+
+Inductive Step : Suppose IH holds for some vector xv such that dim xv = n > 1
+
+  Then consider : v = v0 :: xv , where v0 is a float and head of vector v 
+
+  Then we have : dot_prod v v = dot_prod [v0 :: xv] [v0 :: xv]                                    
+                             = v0 * v0 + dot_prod xv xv 
+                             >= 0 (By IH and the fact that square of any real number is non-negative,
+                                  adding a non-negative real number to a non-negative number gives a real non-negative number
+                                  (Hence implied for floats as well))
+
+  Hence, the IH holds for vector v of form v0 :: xv if it holds for xv, where dim xv = n > 1
+  
+  
+Hence by (1), (2), and Structural Induction, we have proved that the IH holds i.e.
+for any vector v such that dim V = n >= 1, dot_prod v v >= 0
+
+Thereby proving the claim of self dot product Non-Negativity of vectors
+
+====================================================================================================================
+                Dot Product Symmetry/ Commutativity of Dot Product of Vectors and Commutativity of Angle :
+====================================================================================================================
+
+Claim : For any vectors u and v such that dim u = dim v = n >= 1, dot_prod u v = dot_prod v u
+        
+Proof : Proof by Structural Induction on structure of u and v
+
+Let Inductive Hypothesis be : For any vectors u and v such that dim u = dim v = n >= 1, dot_prod u v = dot_prod v u
+
+Base Case : u = [u0], v = [v0]
+  
+  Then we have : dot_prod u v = dot_prod [u0] [v0] 
+                              = u0 * v0               (By definition of dot product in our module)
+                              = v0 * u0               (Communtativity of multiplication on floats)
+                              = dot_prod v u          (By definition of dot product in our module in reverse)
+
+  Hence, the claim holds for the base case  ------ (1)
+
+
+Inductive Step : Suppose IH holds for some vectors xu and xv such that dim xu = dim xv = n > 1
+
+  Then consider : u = u0 :: xu, v = v0 :: xv , where u0 and v0 are floats and heads of vectors u and v
+
+  Then we have : dot_prod u v = dot_prod [u0 :: xu] [v0 :: xv]                                    
+                             = u0 * v0 + dot_prod xu xv          (By definition of dot product in our module)
+                             = v0 * u0 + dot_prod xv xu          (By IH and commutativity of multiplication on floats)
+                             = dot_prod [v0 :: xv] [u0 :: xu]    (By definition of dot product in our module in reverse)
+                             = dot_prod v u                      (By definition of dot product in our module in reverse)
+
+  Hence, the IH holds for vectors u and v of form u0 :: xu and v0 :: xv if
+  it holds for xu and xv, where dim xu = dim xv = n > 1 (Note that dim u = 1 + dim xu = 1 + n = 1 + dim xv = dim v, 
+  by the definition of dim in our module) -------- (2)  
+
+Thus by (1), (2), and Structural Induction, we have proved that the IH holds i.e.
+for any vectors u and v such that dim u = dim v = n >= 1, dot_prod u v = dot_prod v u
+
+Thereby proving the claim of dot product symmetry of vectors
+
+
+Claim : For any vectors u and v such that dim u = dim v = n >= 1, angle u v = angle v u
+
+Proof : By defintion of angle u v, we have : angle u v = acos (theta_l) where 
+        theta_l = dot_prod u v / (length u * length v)                (By definition of angle in our module)
+              = dot_prod v u / (length v * length u)                  (By definition and dot product symmetry of vectors, )  
+              = (dot_prod v u / (magnitude v * magnitude u))          (By definition of angle in our module)
+              = theta_r 
+        
+        Now since angle v u = acos (theta_r) = acos (theta_l) = angle u v 
+
+        Hence the claim holds for the angle of vectors u and v
+
+====================================================================================================================
+                                      "Law of Cosines for Vectors"
+====================================================================================================================
+
+Claim : For any vectors u and v such that dim u = dim v = n >= 1, 
+        dot_prod (u + v) (v + u) = dot_prod u u + dot_prod v v + 2 * dot_prod u v
+
+Proof : By Structural Induction on structure of u and v
+
+Let Inductive Hypothesis be : For any vectors u and v such that dim u = dim v = n >= 1, 
+                              dot_prod (u + v) (v + u) = dot_prod u u + dot_prod v v + 2 * dot_prod u v
+
+Base Case : u = [u0], v = [v0]
+  
+  Then we have : dot_prod (u + v) (v + u) = dot_prod [u0 + v0] [v0 + u0]    (By definition of vector addition in our module)  
+                                        = u0 * u0 + v0 * v0 + 2 * u0 * v0   (By definition of dot product in our module)
+                                                                            (As well as distributivity of multiplication over addition on floats)
+
+                                        = dot_prod [u0] [u0] + dot_prod [v0] [v0] + 2 * dot_prod [u0] [v0] (By definition of dot product in our module in reverse) 
+                                        = dot_prod u u + dot_prod v v + 2 * dot_prod u v  (By definition of dot product in our module in reverse)
+
+  Hence, the claim holds for the base case  ------ (1)
+
+
+Inductive Step : Suppose IH holds for some vectors xu and xv such that dim xu = dim xv = n > 1
+
+  Then consider : u = u0 :: xu, v = v0 :: xv , where u0 and v0 are floats and heads of vectors u and v
+
+  Then we have : dot_prod (u + v) (v + u) = dot_prod ([u0 :: xu] + [v0 :: xv]) ([v0 :: xv] + [u0 :: xu])
+                                          = dot_prod ([u0 + v0] :: (xu + xv)) ([v0 + u0] :: (xv + xu)) (By definition of vector addition in our module)
+                                          = (u0 + v0) * (v0 + u0) + dot_prod (xu + xv) (xv + xu) (By definition of dot product in our module)
+                                          = u0 * u0 + v0 * v0 + 2 * u0 * v0 + dot_prod xu xu + dot_prod xv xv + 2 * dot_prod xu xv (By IH and distributivity of multiplication over addition on floats)
+                                          = dot_prod [u0] [u0] + dot_prod [v0] [v0] + 2 * dot_prod [u0] [v0] + dot_prod xu xu + dot_prod xv xv + 2 * dot_prod xu xv (By definition of dot product in our module in reverse)
+                                          = dot_prod [u0]::xu + dot_prod [v0]::vu + 2 * dot_prod [u0]::xu [v0]::vu (By definition of dot product in our module in reverse)
+                                          = dot_prod u u + dot_prod v v + 2 * dot_prod u v (By definition of cons opertor on List)
+
+  Hence, the IH holds for vectors u and v of form u0 :: xu and v0 :: xv if
+  it holds for xu and xv, where dim xu = dim xv = n > 1 (Note that dim u = 1 + dim xu = 1 + n = 1 + dim xv = dim v, 
+  by the definition of dim in our module) -------- (2)  
+
+Thus by (1), (2), and Structural Induction, we have proved that the IH holds i.e.
+for any vectors u and v such that dim u = dim v = n >= 1, dot_prod (u + v) (v + u) = dot_prod u u + dot_prod v v + 2 * dot_prod u v
+
+Thereby proving the claim of "Law of Cosines for Vectors"
+
+
+Claim : For any vectors u and v such that dim u = dim v = n >= 1, 
+        length (addv u v) = sqrt (length u * length u + length v * length v + 2 * dot_prod u v)
+        (As mentioned u + v is explicitly defined as : add u v , in our module which
+         is later used in proof writing)
+
+Proof : Proof by defintions :
+
+        length (add u v) = sqrt (dot product (u + v) (u + v))
+                         = sqrt (dot product u u + 2 * dot product u v + dot product v v)         (Provend in the previous claim)
+                         = sqrt (length u * length u + 2 * dot product u v + length v * length v)
+                         
+                         (By definition of dot product and length in our module)
+
+        Hence, the claim holds for the length of sum of vectors u and v
+
+
+
+  Hence, the claim holds for the base case  ------ (1)
+
+
+
+
+
 
 *)
 
