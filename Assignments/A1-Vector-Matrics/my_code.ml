@@ -451,22 +451,76 @@ Printf.printf "=================================================================
 
 (* ========================================================================== *)
 
-
-
-
-
-
-(* Mathematical Proofs of the following properties of operations *)
-
 (* ========================================================================== *)
 
-(*
+(* Test Cases for dot_prod *)
+Printf.printf "==========================================================================\n";;
+Printf.printf "Testing implementation of dot_prod : \n";;
+Printf.printf "==========================================================================\n";;
+
+let test_dot () =
+  (* General cases *)
+  let dot_tc_1 = dot_prod [1.1234; 2.2345; 3.3456; 4.4567] [4.5678; 3.4567; 2.3456; 1.2345] in
+  (* Expected Output: 26.2047 *)
+  Printf.printf "dot_tc_1: %0.4f\n" dot_tc_1;
+
+  let dot_tc_2 = dot_prod [1.5678; 2.6789; 3.7890; 4.8901; 5.9012] [5.0123; 4.1234; 3.2345; 2.3456; 1.4567] in
+  (* Expected Output: 51.2265 *)
+  Printf.printf "dot_tc_2: %0.4f\n" dot_tc_2;
+
+  let dot_tc_3 = dot_prod [0.0000; 0.0000; 0.0000; 0.0000; 0.0000; 0.0000] [1.1234; 2.2345; 3.3456; 4.4567; 5.5678; 6.6789] in
+  (* Expected Output: 0.0000 *)
+  Printf.printf "dot_tc_3: %0.4f\n" dot_tc_3;
+
+  let dot_tc_4 = dot_prod [1.1111; 2.2222; 3.3333; 4.4444; 5.5555; 6.6666] [6.6666; 5.5555; 4.4444; 3.3333; 2.2222; 1.1111] in
+  (* Expected Output: 69.1344 *)
+  Printf.printf "dot_tc_4: %0.4f\n" dot_tc_4;
+
+  (* Edge cases for Dimension Error *)
+  try
+    let _ = dot_prod [1.0; 2.0; 3.0] [1.0; 2.0] in
+    Printf.printf "Test Case Failed - Error Not Detected \n"
+  with
+  | DimensionError -> Printf.printf "Test Case Passed - DimensionError Detected \n";
+
+  try
+    let _ = dot_prod [1.0; 2.0; 3.0] [] in
+    Printf.printf "Test Case Failed - Error Not Detected \n"
+  with
+  | DimensionError -> Printf.printf "Test Case Passed - DimensionError Detected \n";
+
+  try
+    let _ = dot_prod [] [1.0; 2.0; 3.0] in
+    Printf.printf "Test Case Failed - Error Not Detected \n"
+  with
+  | DimensionError -> Printf.printf "Test Case Passed - DimensionError Detected \n";
+
+  try
+    let _ = dot_prod [] [] in
+    Printf.printf "Test Case Failed - Error Not Detected \n"
+  with
+  | DimensionError -> Printf.printf "Test Case Passed - DimensionError Detected \n";
+;;
+
+test_dot ();;
+
+
+
+
+(* 
+
+======================================================================================================
+
+                  Mathematical Proofs of the following properties of operations 
+
+======================================================================================================
+
 
 
 ======================================================================================================
 
 In our implementation, vectors are essentially an alias for lists of floats
-Since our module uses tail recursive functions, we will try to prove the properties of our 
+Since our module uses recursive functions, we will try to prove the properties of our 
 module using structural induction on the vectors 
 
 An intersting property of our module is that the vectors have dimensions = n >= 1
@@ -480,19 +534,28 @@ Some common abbreviations used in the proofs :
   1) IH : Inductive Hypothesis
   2) O  : The zero vector of appropriate dimension n >=1 i.e. O = [0.0, 0.0, 0.0, ..., 0.0] (n times)
 
-Note that addition of two vectors u and v is defined as per the module's implentation only and
-proof's have been given for the same (Uses + to denote crumbersome poofs).
+!!! Note that addition of two vectors u and v is defined as per the module's implentation only and
+!!! proof's have been given for the same (Using + to denote the same to avoid crumbersome poofs).
 
-Similary for scalar multiplication, we use * to denote scalar multiplication of vectors and is defined 
-as per the module's implentation only 
+!!! Similary for scalar multiplication, we re-use * to denote scalar multiplication of vectors and is defined 
+!!! as per the module's implentation only and proof's have been given for the same.
 
-Thus in proofs : u + v = add u v , u + (v + w) add u (add v w) etc. 
+!!! Since OCaml does not support operator overloading , *. and +. are used to denote float multiplication and addition
+!!! in the syntax of OCaml but for the sake of clarity and brevity, we will use * and + to denote the same in the proofs
 
-               : c * v = scale c v, b.(c.v) = scale b (scale c v) etc.
+
+!!! Appropriate brackets have been used to preserve the order of operations in the proofs
+
+Thus in proofs : u + v = addv u v , u + (v + w) =  addv u (addv v w), (u+v)+w = addv (addv u v) w , etc. 
+                
+                Similarly for scalar multiplication (here b and c are scalar and v is a vector of floats)         
+               : c * v = scale c v,  b * (c * v) = scale b (scale c v), (b*c) * v = scale b*c v etc.
+
+!!! For most base cases : x::[] = [x] has been used directly (implied by the cons operator in OCaml)
 
 ======================================================================================================
 
-Important Note : Dimension are of vecors are preserved upon addition and scalar multiplication:
+Important Note : Dimension are of vectors are preserved upon addition and scalar multiplication:
 
 Claim : For any vectors u,v such that dim V = dim U = n , dim(u + v) = n
 
@@ -553,7 +616,7 @@ Proof : Proof By Structural Induction induction on the structure of the vector v
 
 ====================================================================================================================
 
-                          Proof of Commutativity of Vector Addition : 
+                                  Proof of Commutativity of Vector Addition : 
 
 ====================================================================================================================
 
@@ -590,7 +653,7 @@ Proof : Proof By Structural Induction induction on the structure of the vectors 
 
 ==================================================================================================================== 
 
-                          Proof of Associativity of Vector Addition :
+                                Proof of Associativity of Vector Addition :
 
 ====================================================================================================================
 
@@ -638,7 +701,7 @@ Proof : Proof By Structural Induction on the structure of the vectors u, v, and 
 
 ==================================================================================================================== 
 
-                                    Proof of Identity of Addition : 
+                                        Proof of Identity of Addition : 
 
 ====================================================================================================================
 
@@ -659,8 +722,8 @@ Proof : Proof By Structural Induction on the structure of the vector v
     Then consider : v = v0 :: xv, where v0 is a float and head of vector v
     
     Then we have : v + O_{n+1} = [v0 :: xv] + [0.0 :: O_{n}] 
-                               = [v0 + 0.0] :: (xv + O_{n}) 
-                               = [v0] :: xv = v
+                               = [v0 + 0.0] :: (xv + O_{n})  (by definition of vector addition in our module)
+                               = [v0] :: xv = v (By IH and the fact that 0.0 is the additive identity for floats)
     
     ---- (By IH and definition of vector addition, as well as definition of dim in our module)
 
@@ -699,7 +762,8 @@ Proof : Proof By Structural Induction on the structure of the vector v
     
     Then we have : 1.0 * v = 1.0 * [v0 :: xv] 
                            = [1.0 * v0] :: (1.0 * xv)   (By definition of scalar multiplication on vectors in our module)
-                           = [v0] :: xv                 (By IH and definition of vector addition)
+                           = [v0] :: xv                 (By IH and definition of vector addition, and the fact that 1.0 
+                                                         is the multiplicative identity for floats)
                            = v  
     
     Hence, the IH holds for vector v of form v0 :: xv if
@@ -718,6 +782,7 @@ Proof : Proof By Structural Induction on the structure of the vector v
 ====================================================================================================================
 
 Claim : For any vector v such that dim V = n >= 1, 0.0 * v = O, where O is the zero vector of dimension n
+        (As mentioned 0.0 * v is explicitly defined as : scale 0.0 v , in our module)
 
 Proof : Proof By Structural Induction on the structure of the vector v
 
@@ -733,10 +798,11 @@ Proof : Proof By Structural Induction on the structure of the vector v
     Then consider : v = v0 :: xv, where v0 is a float and head of vector v
     
     Then we have : 0.0 * v = 0.0 * [v0 :: xv] 
-                           = [0.0 * v0] :: (0.0 * xv) (By definition of scalar multiplication on vectors in our module, as 
-                                                       well as 0.0 is the annihilator for float multiplication)
+                           = [0.0 * v0] :: (0.0 * xv) (By definition of scalar multiplication on vectors in our module, 
+                                                       as well as 0.0 is the annihilator for float multiplication)
 
-                          = [0.0] :: O_{n} = O_{n+1}  (By IH and definition of vector addition, as well as definition of dim in our module)
+                          = [0.0] :: O_{n} = O_{n+1}  (By IH and definition of vector addition, as 
+                                                       well as definition of dim in our module)
     
     Hence, the IH holds for vector v of form v0 :: xv if
     it holds for xv, where dim xv = n > 1 (Note that dim v = 1 + dim xv = 1 + n = dim v, 
@@ -749,54 +815,64 @@ Proof : Proof By Structural Induction on the structure of the vector v
 
 
 ====================================================================================================================
-                                  Proof of Additive Inverse of Vectors :
+                                    Proof of Additive Inverse of Vectors :
 ====================================================================================================================
 
-Claim : For any vector v such that dim V = n >= 1, v + (-1.0 * v) = O, where O is the zero vector of dimension n
+Claim : For any vector v such that dim V = n >= 1, (v) + (inv v) = O, where O is the zero vector of dimension n
+        (As mentioned (v) + (inv v) is explicitly defined as : add v (inv v) , in our module)
 
 Proof : Proof by Structural Induction on Structure of v
 
-  Let Inductive Hypothesis be : For any vector v such that dim V = n >= 1, v + (-1.0 * v) = O (denoted by O_{n})
+  Let Inductive Hypothesis be : For any vector v such that dim V = n >= 1, (v) + (inv v) = O (denoted by O_{n})
   
   Base Case : v = [v0]
     
-    Then we have : v + (-1.0 * v) = [v0] + (-1.0 * [v0]) = [v0] + [-1.0 * v0] = [v0 - v0] = [0.0] = O_{1}
-    (By definition of addition and scalar multiplication on vector in our module , as well as
-    the definition of additive inverse of floats).
-
+    Then we have : (v) + (inv v) = [v0] + [-1.0 * v0]  (By definition of additive inverse in our module)
+                                 = [v0 + -1.0 * v0 ]      (By definition of vector addition in our module)
+                                 = [0.0] = O_{1}       (By the fact that -1.0*x is the additive inverse of x for floats)
+  
     Hence, the claim holds for the base case  ------ (1)
 
   Inductive Step : Suppose IH holds for some vector xv such that dim xv = n > 1
     
     Then consider : v = v0 :: xv, where v0 is a float and head of vector v
     
-    Then we have : v + (-1.0 * v) = [v0 :: xv] + (-1.0 * [v0 :: xv]) = [v0 :: xv] + [-1.0 * v0 :: (-1.0 * xv)]
-            = [v0 + (-1.0 * v0)] :: (xv + (-1.0 * xv)) = [0.0] :: O_{n} = O_{n+1}
-    
+    Then we have : (v) + (inv v) = [v0 :: xv] + (inv [v0 :: xv]) 
+                                 = [v0 :: xv] + [-1.0 * v0 :: (inv xv)]           (By definition of additive inverse in our module)
+                                 = [v0 + (-1.0 * v0)] :: ((xv) + (in xv))         (By definition of vector addition in our module)
+                                 = [0.0] :: O_{n} = O_{n+1}                       (By IH and definition of vector addition,
+                                                                                   and the definition of additive inverse of floats) 
+                                                                                   ,as well as definition of dim in our module)
+
     Hence, the IH holds for vector v of form v0 :: xv if
     it holds for xv, where dim xv = n > 1 (Note that dim v = 1 + dim xv = 1 + n = dim v, 
     by the definition of dim in our module) -------- (2)
 
   Thus by (1), (2), and Structural Induction, we have proved that the IH holds i.e. 
-  for any vector v such that dim V = n >= 1, v + (-1.0 * v) = O 
+  for any vector v such that dim V = n >= 1, (v) + (inv v) = O 
 
   Thereby proving the claim of additive inverse of vectors
 
 ====================================================================================================================
-                                      (Left) Combination of Scalar Products on Vectors :
+                                (Left) Combination of Scalar Products on Vectors :
 ====================================================================================================================
 
 
-Claim : For any vector v and scalar b,c such that dim v = n >= 1, b * (c * u) = (b * u) * u
+Claim : For any vector v and scalar b,c such that dim v = n >= 1, b * (c * v) = (b * c) * v
+        (As mentioned b * (c * v) is explicitly defined as : scale b (scale c v) , in our module
+         and similarly for (b * c) * v : scale (b * c) v, in our module)
 
 Proof : Proof by Structural Induction on structure v
 
-  Let Inductive Hypothesis be : For any vector v and scalars b,c such that dim v = n >= 1, b * (c * u) = (b * u) * u
+  Let Inductive Hypothesis be : For any vector v and scalars b,c such that dim v = n >= 1, b * (c * v) = (b * c) * v
 
   Base Case : v = [v0]
     
-    Then we have : b * (c * v) = b * (c * [v0]) = b * [c * v0] = [b * (c * v0)] = [(b * c) * v0] = (b * c) * [v0]
-    (By definition of scalar multiplication of vector and associativity of multiplication on floats)
+    Then we have : b * (c * v) = b * (c * [v0]) 
+                               = b * [c * v0]   (By definition of scalar multiplication on vectors in our module)
+                               = [b * (c * v0)] (By definition of scalar multiplication on vectors in our module) 
+                               = [(b * c) * v0] (By associativity of multiplication on floats)
+                               = (b * c) * [v0] (By definition of scalar multiplication on vectors in our module in reverse)
 
     Hence, the claim holds for the base case  ------ (1)
   
@@ -804,9 +880,12 @@ Proof : Proof by Structural Induction on structure v
 
     Then consider : v = v0 :: xv , where v0 is a float and head of vector v 
 
-    Then we have : b * (c * v) = b * (c * [v0 :: xv]) = b * ([c * v0] :: (c * xv))
-            = [b * (c * v0)] :: (b * (c * xv)) = [(b * c) * v0] :: ((b * c) * xv)
-            = (b * c) * [v0 :: xv] = (b * c) * v
+    Then we have : b * (c * v) = b * (c * [v0 :: xv]) 
+                               = b * ([c * v0] :: (c * xv))           (By definition of scalar multiplication on vectors in our module)
+                               = [b * (c * v0)] :: (b * (c * xv))     (By definition of scalar multiplication on vectors in our module) 
+                               = [(b * c) * v0] :: ((b * c) * xv)     (By IH and associativity of multiplication on floats)
+                               = (b * c) * [v0 :: xv] = (b * c) * v   (By definition of scalar multiplication on vectors in our module
+                                                                       in reverse)
 
     Hence, the IH holds for vector v of form v0 :: xv if
     it holds for xv, where dim xv = n > 1 (Note that dim v = 1 + dim xv = 1 + n = dim v, 
@@ -823,6 +902,9 @@ Proof : Proof by Structural Induction on structure v
 ====================================================================================================================
 
 Claim : For any vector v and scalars b,c such that dim v = n >= 1, (b + c) * v = (b * v) + (c * v)
+        (As mentioned (b + c) * v is explicitly defined as : scale (b + c) v , in our module
+         and similarly for (b * v) + (c * v) : addv (scale b v) (scale c v), in our module 
+         where b and c are scalars and v is a vector of floats)
 
 Proof : Proof by Structural Induction on structure of v
 
@@ -830,8 +912,12 @@ Let Inductive Hypothesis be : For any vector v and scalars b, c such that dim v 
 
 Base Case : v = [v0]
   
-  Then we have : (b + c) * v = (b + c) * [v0] = [(b + c) * v0] = [b * v0 + c * v0] = [b * v0] + [c * v0] = (b * [v0]) + (c * [v0])
-                             = (b * v) + (c * v)
+  Then we have : (b + c) * v = (b + c) * [v0] 
+                             = [(b + c) * v0]          (By definition of scalar multiplication on vectors in our module) 
+                             = [b * v0 + c * v0]       (By distributivity of multiplication over addition on floats)
+                             = [b * v0] + [c * v0]     (By definition of addition on vectors in our module in reverse)
+                             = (b * [v0]) + (c * [v0]) (By definition of scalar multiplication on vectors in our module in reverse)
+                             = (b * v) + (c * v)       (By definition of scalar multiplication on vectors in our module in reverse)
 
   (By definition of scalar multiplication and addition on vectors and distributivity of multiplication over addition on floats)
 
@@ -841,9 +927,12 @@ Inductive Step : Suppose IH holds for some vector xv such that dim xv = n > 1
 
   Then consider : v = v0 :: xv , where v0 is a float and head of vector v 
 
-  Then we have : (b + c) * v = (b + c) * [v0 :: xv] = [(b + c) * v0] :: ((b + c) * xv)
-          = [b * v0 + c * v0] :: ((b * xv) + (c * xv)) = ([b * v0] :: (b * xv)) + ([c * v0] :: (c * xv))
-          = (b * [v0 :: xv]) + (c * [v0 :: xv]) = (b * v) + (c * v)
+  Then we have : (b + c) * v = (b + c) * [v0 :: xv]                                    
+                             = [(b + c) * v0] :: ((b + c) * xv)                        (By definition of scalar multiplication on vectors in our module)
+                             = [b * v0 + c * v0] :: ((b * xv) + (c * xv))              (By IH and distributivity of multiplication over addition on floats)
+                             = ([b * v0] :: (b * xv)) + ([c * v0] :: (c * xv))         (By definition of addition on vectors in our module in reverse)
+                             = (b * [v0 :: xv]) + (c * [v0 :: xv])                     (By definition of scalar multiplication on vectors in our module in reverse)
+                             = (b * v) + (c * v)                                       (By definition of scalar multiplication on vectors in our module in reverse)
 
   Hence, the IH holds for vector v of form v0 :: xv if
   it holds for xv, where dim xv = n > 1 (Note that dim v = 1 + dim xv = 1 + n = dim v, 
@@ -854,6 +943,50 @@ for any vector v and scalars b, c such that dim v = n >= 1, (b + c) * v = (b * v
 
 Thereby proving the claim of scalar sum product distribution on vectors
 
+====================================================================================================================
+                                       Scalar Distribution over Vector Sums :
+====================================================================================================================
+
+Claim : For any vectors u and v and scalar b such that dim u = dim v = n >= 1, b * (u + v) = (b * u) + (b * v)
+        (As mentioned b * (u + v) is explicitly defined as : scale b (addv u v) , in our module
+         and similarly for (b * u) + (b * v) : addv (scale b u) (scale b v), in our module 
+         where b is a scalar and u and v are vectors of floats)
+
+Proof  : Proof by Structural Induction on structure of u and v
+        
+Let Inductive Hypothesis be : For any vectors u and v and scalar b such that dim u = dim v = n >= 1, b * (u + v) = (b * u) + (b * v)
+
+Base Case : u = [u0], v = [v0]
+  
+  Then we have : b * (u + v) = b * ([u0] + [v0]) 
+                             = b * [u0 + v0]           (By definition of vector addition in our module)
+                             = [b * (u0 + v0)]         (By definition of scalar multiplication on vectors in our module) 
+                             = [b * u0 + b * v0]       (By distributivity of multiplication over addition on floats)
+                             = [b * u0] + [b * v0]     (By definition of addition on vectors in our module in reverse)
+                             = (b * [u0]) + (b * [v0]) (By definition of scalar multiplication on vectors in our module in reverse)
+                             = (b * u) + (b * v)       (By definition of scalar multiplication on vectors in our module in reverse)
+
+
+  Hence, the claim holds for the base case  ------ (1)
+
+Inductive Step : Suppose inductive hypothesis holds for some vectors xu and xv such that dim xu = dim xv = n > 1
+
+  Then consider : u = u0 :: xu, v = v0 :: xv , where u0 and v0 are floats and heads of vectors u and v
+
+  Then we have : b * (u + v) = b * ([u0 :: xu] + [v0 :: xv])                                    
+                             = b * ([u0 + v0] :: (xu + xv))                        (By definition of vector addition in our module)
+                             = [b * (u0 + v0)] :: (b * (xu + xv))                  (By definition of scalar multiplication on vectors in our module)
+                             = [b * u0 + b * v0] :: (b * xu + b * xv)              (By IH and distributivity of multiplication over addition on floats)
+                             = ([b * u0] :: (b * xu)) + ([b * v0] :: (b * xv))     (By definition of addition on vectors in our module in reverse)
+                             = (b * [u0 :: xu]) + (b * [v0 :: xv])                 (By definition of scalar multiplication on vectors in our module in reverse)
+                             = (b * u) + (b * v)                                   (By definition of scalar multiplication on vectors in our module in reverse)
+
+  Hence, the IH holds for vectors u and v of form u0 :: xu and v0 :: xv if
+  it holds for xu and xv, where dim xu = dim xv = n > 1 (Note that dim u = 1 + dim xu = 1 + n = 1 + dim xv = dim v, 
+  by the definition of dim in our module) -------- (2)  
+
+Thus by (1), (2), and Structural Induction, we have proved that the IH holds i.e.
+for any vectors u and v and scalar b such that dim u = dim v = n >= 1, b * (u + v) = (b * u) + (b * v)
+
 *)
 
-(* ========================================================================== *)

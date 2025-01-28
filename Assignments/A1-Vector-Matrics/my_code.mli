@@ -26,3 +26,4 @@ val test_is_zero : unit -> unit
 val test_unit : unit -> unit
 val test_scale : unit -> unit
 val test_addv : unit -> unit
+val test_dot : unit -> unit
