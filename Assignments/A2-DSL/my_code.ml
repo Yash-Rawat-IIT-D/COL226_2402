@@ -161,7 +161,7 @@ let angle (v1 : vector) (v2 : vector) : float =
     acos s_cos_theta
 ;;
 
-let v1_norm_comp_v2 (v1 : vector) (v2 : vector) : float = 
+let v1_parallel_comp_v2 (v1 : vector) (v2 : vector) : float = 
   let v1_dot_v2 = dot_prod v1 v2 in
   let len_v2 = length v2 in
   if(is_zero_close v2) then
@@ -169,6 +169,14 @@ let v1_norm_comp_v2 (v1 : vector) (v2 : vector) : float =
   else
     v1_dot_v2 /. ( len_v2 *. len_v2)
 ;;
+
+let v1_norm_comp_v2 (v1 : vector) (v2 : vector) : vector = 
+  let v1_dot_v2 = dot_prod v1 v2 in
+  let len_v2 = length v2 in
+  if(is_zero_close v2) then
+    raise ZeroVectorError
+  else
+    scale (v1_dot_v2 /. ( len_v2 *. len_v2)) v2
 
 
 
