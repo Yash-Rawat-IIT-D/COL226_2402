@@ -6,8 +6,10 @@
                             (* Float Checking Zero Code*)
 (*===================================================================================*)
 
+let my_epsilon = 0.000001;;
+
 let f_eq_z (f : float) : bool = 
-  abs_float(f) < epsilon_float
+  abs_float(f) < my_epsilon
 ;; 
 
 (*===================================================================================*)
@@ -161,21 +163,6 @@ let angle (v1 : vector) (v2 : vector) : float =
     acos s_cos_theta
 ;;
 
-let v1_parallel_norm_v2 (v1 : vector) (v2 : vector) : float = 
-  let v1_dot_v2 = dot_prod v1 v2 in
-  let len_v2 = length v2 in
-  if(is_zero_close v2) then
-    raise ZeroVectorError
-  else
-    v1_dot_v2 /. ( len_v2 *. len_v2)
-;;
-
-let v1_plane_norm_v2 (v1 : vector) (v2 : vector) : vector = 
-   (addv v1 (inv (scale (v1_parallel_norm_v2 v1 v2) v2)))
-;;
-
-
-
 
 (*===================================================================================*)
     (* Expression Definition | Defitnitional Interpreter | Types and Type Checking*)
@@ -203,111 +190,50 @@ type types =
   | Vector of int (* n Dimesnional vector of float types *)
 ;;
 
+exception DimensionMismatch;;
+exception TypeMismatch of expr * string;;
+exception Wrong of expr ;;
+
 type values = 
-| B of myBool 
+| B of bool
 | S of float 
 | V of vector
 ;;
 
-exception Wrong of expr;;
-
 (* Placeholder for Error Specifications *)
 exception Foo;;
 
-let rec eval (e : expr) : values = 
-  match e with
-  | T -> B T
-  | F -> B F
-  | ConstS s -> S s
-  | ConstV v -> V v
-  | Add (e1, e2) -> 
-    (
-      match (eval e1, eval e2) with
-      | B b1, B b2 -> B (my_or b1 b2)
-      | S s1, S s2 -> S (s1 +. s2)
-      | V v1, V v2 -> V (addv v1 v2)
-      | _ -> raise Foo
-    )
-  | Sub (e1, e2) ->
-    (
-      match (eval e1, eval e2) with
-      | S s1, S s2 -> S (s1 -. s2)
-      | V v1, V v2 -> V (addv v1 (inv v2))
-      | _ -> raise Foo
-    )
-  | Inv e1 ->
-    (
-      match eval e1 with
-      | B b -> B (my_not b)
-      | S s -> S (-1.0 *. s)
-      | V v -> V (inv v)
-    )
-  | ScalProd (e1, e2) -> 
-    (
-      match (eval e1, eval e2) with
-      | B b1, B b2 -> B (my_and b1 b2)
-      | S s1, S s2 -> S (s1 *. s2)
-      | S s, V v -> V (scale s v)
-      | V v, S s -> V (scale s v)
-      | _ -> raise Foo
-    )
-  | DotProd (e1, e2) -> 
-    (
-      match (eval e1, eval e2) with
-      | V v1, V v2 -> S (dot_prod v1 v2)
-      | _ -> raise Foo
-    )
-  | Mag e1 -> 
-    (
-      match eval e1 with
-      | S s -> S (abs_float s)
-      | V v -> S (length v)
-      | _ -> raise Foo
-    )
-  | Angle (e1, e2) -> 
-    (
-      match (eval e1, eval e2) with
-      | V v1, V v2 -> S (angle v1 v2)
-      | _ -> raise Foo
-    )
-  | IsZero e1 -> 
-    (
-      match eval e1 with
-      | S s -> B (bool_to_myBool (f_eq_z s))
-      | V v -> B (bool_to_myBool (is_zero_close v))
-      | _ -> raise Foo
-    )
-  | Cond (e1, e2, e3) -> 
-    (
-      match eval e1 with
-      | B b -> if b = T then eval e2 else eval e3
-      | _ -> raise Foo  
-    )
-;;
-
-(* ⊢ : Matching from exp to types *)
-(* Static Type Checking of Any Expression e *)
+(*===================================================================================*)
+                          (* Static Type Checking of Expression e *)
+(*===================================================================================*)
 
 let rec type_of (e : expr) : types = 
   match e with
   | T -> Bool
   | F -> Bool
   | ConstS _ -> Scalar
-  | ConstV v -> Vector (dim v)
-  | Add (e1, e2) -> 
+  | ConstV v -> 
     (
-      match (type_of e1, type_of e2) with
-      | Scalar, Scalar -> Scalar
-      | Vector n, Vector m -> if n = m then Vector n else raise Foo
-      | _ -> raise Foo 
+      try 
+        let n = dim v in
+        Vector n
+      with _ -> raise (Wrong(e))
     )
-  | Sub (e1, e2) -> 
+  | Add (e1, e2) -> 
     (
       match (type_of e1, type_of e2) with
       | Bool, Bool -> Bool
       | Scalar, Scalar -> Scalar
-      | Vector n, Vector m -> if n = m then Vector n else raise Foo
-      | _ -> raise Foo
+      | Vector n, Vector m -> if n = m then Vector n else raise(Wrong(e))
+      | _ -> raise (Wrong(e))
+    )
+  | Sub (e1, e2) -> 
+    (
+      match (type_of e1, type_of e2) with
+      (* | Bool, Bool -> Bool *)
+      | Scalar, Scalar -> Scalar
+      | Vector n, Vector m -> if n = m then Vector n else raise(Wrong(e))
+      | _ -> raise(Wrong(e))
     )
   | Inv e1 -> 
     ( 
@@ -324,14 +250,14 @@ let rec type_of (e : expr) : types =
       | Scalar, Scalar -> Scalar
       | Scalar, Vector n -> Vector n
       | Vector n, Scalar -> Vector n
-      | _ -> raise Foo
+      | _ -> raise (Wrong(e))
     )
 
   | DotProd (e1, e2) -> 
     (
       match (type_of e1, type_of e2) with
-      | Vector n, Vector m -> if n = m then Scalar else raise Foo
-      | _ -> raise Foo
+      | Vector n, Vector m -> if n = m then Scalar else raise(Wrong(e))
+      | _ -> raise(Wrong(e))
     )
 
   | Mag e1 -> 
@@ -339,14 +265,14 @@ let rec type_of (e : expr) : types =
       match (type_of e1) with
       | Scalar -> Scalar
       | Vector n -> Scalar
-      | _ -> raise Foo
+      | _ -> raise (Wrong(e))
     )
 
   | Angle (e1, e2) -> 
     (
       match (type_of e1, type_of e2) with
-      | Vector n, Vector m -> if n = m then Scalar else raise Foo
-      | _ -> raise Foo
+      | Vector n, Vector m -> if n = m then Scalar else raise(Wrong(e))
+      | _ -> raise (Wrong(e))
     )
 
   | IsZero e1 -> 
@@ -354,7 +280,7 @@ let rec type_of (e : expr) : types =
       match type_of e1 with
       | Bool -> Bool
       | Scalar -> Bool
-      | Vector n -> Bool      
+      | Vector n -> Bool     
     )
 
   | Cond (e1, e2, e3) -> 
@@ -362,24 +288,163 @@ let rec type_of (e : expr) : types =
       match (type_of e1) with
       | Bool -> 
         (
-          if(eval e1 = B T) then
-            type_of e2
-          else
-            type_of e3;
+          let e2_type = type_of e2 in
+          let e3_type = type_of e3 in
+            if(e2_type = e3_type) then
+              e2_type
+            else
+              raise (Wrong(e))        
+
         )
-      | _ -> raise Foo
+      | _ -> raise (Wrong(e))
     )
 
 ;;
 
 (*===================================================================================*)
+                          (* Evaluation of Expression e *)
+(*===================================================================================*)
 
-let print_result (desc : string) (result : bool) =
+
+let rec eval (e : expr) : values = 
+
+  let my_static_type_check = type_of e in
+
+  match e with
+  | T -> B true
+  | F -> B false
+  | ConstS s -> S s
+  | ConstV v -> V v
+  | Add (e1, e2) -> 
+    (
+      match (eval e1, eval e2) with
+      | B b1, B b2 -> B (b1 || b2)
+      | S s1, S s2 -> S (s1 +. s2)
+      | V v1, V v2 -> V (addv v1 v2)
+      | _ -> raise (Wrong(e))
+    )
+  | Sub (e1, e2) ->
+    (
+      match (eval e1, eval e2) with
+      | S s1, S s2 -> S (s1 -. s2)
+      | V v1, V v2 -> V (addv v1 (inv v2))
+      | _ -> raise (Wrong(e))
+    )
+  | Inv e1 ->
+    (
+      match eval e1 with
+      | B b -> B (not b)
+      | S s -> S (-1.0 *. s)
+      | V v -> V (inv v)
+    )
+  | ScalProd (e1, e2) -> 
+    (
+      match (eval e1, eval e2) with
+      | B b1, B b2 -> B (b1 && b2)
+      | S s1, S s2 -> S (s1 *. s2)
+      | S s, V v -> V (scale s v)
+      | V v, S s -> V (scale s v)
+      | _ -> raise (Wrong(e))
+    )
+  | DotProd (e1, e2) -> 
+    (
+      match (eval e1, eval e2) with
+      | V v1, V v2 -> S (dot_prod v1 v2)
+      | _ -> raise (Wrong(e))
+    )
+  | Mag e1 -> 
+    (
+      match eval e1 with
+      | S s -> S (abs_float s)
+      | V v -> S (length v)
+      | _ -> raise (Wrong(e))
+    )
+  | Angle (e1, e2) -> 
+    (
+      match (eval e1, eval e2) with
+      | V v1, V v2 -> S (angle v1 v2)
+      | _ -> raise (Wrong(e))
+    )
+  | IsZero e1 -> 
+    (
+      match eval e1 with
+      | S s -> B (f_eq_z s)
+      | V v -> B (is_zero_close v)
+      | _ -> raise (Wrong(e))
+    )
+  | Cond (e1, e2, e3) -> 
+    (
+      match eval e1 with
+      | B b -> if b = true then eval e2 else eval e3
+      | _ -> raise (Wrong(e))  
+    )
+;;
+
+
+
+(*===================================================================================*)
+
+let print_result (desc : string) (result : bool) : unit =
   Printf.printf "%s: %s\n" desc (if result then "Passed" else "Failed")
 ;;
 
 (* Test cases for type_of function *)
-let test_type_of () =
+
+let test_type_bool () = 
+  let tests = [
+    (T, Bool, "Type of T");
+    (F, Bool, "Type of F");
+    (Add (T, F), Bool, "Type of Add (T, F)");
+    (Inv (T), Bool, "Type of Inv T");
+    (ScalProd(Inv (T),Add(Inv (T),Inv (F))), Bool, "Type of ScalProd(Inv (T),Add(Inv (T),Inv (F)))");
+    (ScalProd (T, F), Bool, "Type of ScalProd (T, F)");
+    (IsZero (ConstV [0.0; 0.0; 0.0; 0.0]), Bool, "Type of IsZero (ConstV [0.0; 0.0; 0.0; 0.0])");
+    ] in
+  List.iter (fun (expr, expected_type, desc) ->
+    let result = try type_of expr = expected_type with _ -> false in
+    print_result desc result
+  ) tests
+;;
+
+let test_type_scalar() = 
+  let tests = [
+    (ConstS 3.1415, Scalar, "Type of ConstS 3.14");
+    (Add (ConstS 192.01, ConstS 57.44), Scalar, "Type of Add (ConstS 192.01, ConstS 57.44)");
+    (Sub (Add (ConstS 192.01, ConstS 57.44), Add (ConstS 46.44, ConstS 341.76)), Scalar, "Type of Sub (Add (ConstS 192.01, ConstS 57.44), Add (ConstS 46.44, ConstS 341.76)) :");
+    (Inv ( DotProd (ConstV [1.0; 2.0; 3.0], ConstV [4.0; 5.0; 6.0])), Scalar, "Type of Inv ( DotProd (ConstV [1.0; 2.0; 3.0], ConstV [4.0; 5.0; 6.0])) : ");
+    (Mag (ScalProd (ConstS 2.0, ConstV [1.0; 2.0])), Vector 2, "Type of ScalProd (ConstS 2.0, ConstV [1.0; 2.0])");
+    (DotProd (ScalProd (ConstS 5.43, ConstV [1.33; 2.23]), ScalProd (ConstV [7.76; 2.35],ConstS 1.11)), Scalar, "DotProd (ScalProd (ConstS 5.43, ConstV [1.33; 2.23]), ScalProd (ConstV [7.76; 2.35],ConstS 1.11))) : ");
+    (* (Mag (ConstV [3.0; 4.0]), Scalar, "Type of Mag (ConstV [3.0; 4.0])"); *)
+    (Angle (ConstV [1.0; 2.0; 3.0], ConstV [-3.0; -4.0; 5.0]), Scalar, "Type ofAngle (ConstV [1.0; 2.0; 3.0], ConstV [-3.0; -4.0; 5.0]) : ");
+    (IsZero (ConstS 0.0), Bool, "Type of IsZero (ConstS 0.0)");
+    (Cond (T, ConstS 1.0, ConstS 2.0), Scalar, "Type of Cond (T, ConstS 1.0, ConstS 2.0)")
+  ] in
+  List.iter (fun (expr, expected_type, desc) ->
+    let result = try type_of expr = expected_type with _ -> false in
+    print_result desc result
+  ) tests
+
+  let test_type_vector () = 
+    let tests = [
+      (ConstV [1.0; 2.0; 3.0], Vector 3, "Type of ConstV [1.0; 2.0; 3.0]");
+      (Add (ConstV [1.0; 2.0], ConstV [3.0; 4.0]), Vector 2, "Type of Add (ConstV [1.0; 2.0], ConstV [3.0; 4.0])");
+      (Sub (ConstV [1.0; 2.0], ConstV [3.0; 4.0]), Vector 2, "Type of Sub (ConstV [1.0; 2.0], ConstV [3.0; 4.0])");
+      (Inv (ConstV [1.0; 2.0]), Vector 2, "Type of Inv (ConstV [1.0; 2.0])");
+      (ScalProd (ConstS 2.0, ConstV [1.0; 2.0]), Vector 2, "Type of ScalProd (ConstS 2.0, ConstV [1.0; 2.0])");
+      (DotProd (ConstV [1.0; 2.0], ConstV [3.0; 4.0]), Scalar, "Type of DotProd (ConstV [1.0; 2.0], ConstV [3.0; 4.0])");
+      (Mag (ConstV [3.0; 4.0]), Scalar, "Type of Mag (ConstV [3.0; 4.0])");
+      (Angle (ConstV [1.0; 0.0], ConstV [0.0; 1.0]), Scalar, "Type of Angle (ConstV [1.0; 0.0], ConstV [0.0; 1.0])");
+      (IsZero (ConstV [0.0; 0.0]), Bool, "Type of IsZero (ConstV [0.0; 0.0])");
+      (Cond (T, ConstV [1.0; 2.0], ConstV [3.0; 4.0]), Vector 2, "Type of Cond (T, ConstV [1.0; 2.0], ConstV [3.0; 4.0])")
+    ] in
+    List.iter (fun (expr, expected_type, desc) ->
+      let result = try type_of expr = expected_type with _ -> false in
+      print_result desc result
+    ) tests
+  ;;
+
+let test_type () =
+
   let tests = [
     (T, Bool, "Type of T");
     (F, Bool, "Type of F");
@@ -404,8 +469,8 @@ let test_type_of () =
 (* Test cases for eval function *)
 let test_eval () =
     let tests = [
-    (T, B T, "Eval T");
-    (F, B F, "Eval F");
+    (T, B true, "Eval T");
+    (F, B false, "Eval F");
     (ConstS 3.14, S 3.14, "Eval ConstS 3.14");
     (ConstV [1.0; 2.0; 3.0], V [1.0; 2.0; 3.0], "Eval ConstV [1.0; 2.0; 3.0]");
     (Add (ConstS 1.0, ConstS 2.0), S 3.0, "Eval Add (ConstS 1.0, ConstS 2.0)");
@@ -415,7 +480,7 @@ let test_eval () =
     (DotProd (ConstV [1.0; 2.0], ConstV [3.0; 4.0]), S 11.0, "Eval DotProd (ConstV [1.0; 2.0], ConstV [3.0; 4.0])");
     (Mag (ConstV [3.0; 4.0]), S 5.0, "Eval Mag (ConstV [3.0; 4.0])");
     (Angle (ConstV [1.0; 0.0], ConstV [0.0; 1.0]), S (Float.pi /. 2.0), "Eval Angle (ConstV [1.0; 0.0], ConstV [0.0; 1.0])");
-    (IsZero (ConstS 0.0), B T, "Eval IsZero (ConstS 0.0)");
+    (IsZero (ConstS 0.0), B true, "Eval IsZero (ConstS 0.0)");
     (Cond (T, ConstS 1.0, ConstS 2.0), S 1.0, "Eval Cond (T, ConstS 1.0, ConstS 2.0)")
   ] in
   List.iter (fun (expr, expected_value, desc) ->
@@ -426,9 +491,18 @@ let test_eval () =
 
 (* Run all tests *)
 let () =
-  print_endline "Running type_of tests:";
-  test_type_of ();
-  print_endline "\nRunning eval tests:";
+  print_endline "===================================================================================";
+  print_endline "Running type_bool tests:";
+  test_type_bool();
+  print_endline "===================================================================================";
+  print_endline "Running type_scalar tests:";
+  test_type_scalar();
+  print_endline "===================================================================================";
+  print_endline "Running eval tests:";
+  test_type_vector();
+  
+  print_endline "===================================================================================";
+  print_endline "Running eval tests:";
   test_eval ();
 ;;
 
