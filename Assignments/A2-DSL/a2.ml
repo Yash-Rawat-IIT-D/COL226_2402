@@ -56,42 +56,51 @@ type vector = float list;;
 exception DimensionError;;
 exception ZeroVectorError;;
 
-let rec create (n: int) (x: float) : vector = 
-  if n < 1 then 
-    raise DimensionError
-  else
-    match n with
-    | 1 -> x::[]
-    | _ -> x::(create (n-1) x)
+let create (n: int) (x: float) : vector = 
+  let rec create_tail_rec_helper (n: int) (x: float) (acc: vector) : vector = 
+    if n < 1 then 
+      raise DimensionError
+    else
+      match n with
+      | 1 -> x::acc
+      | _ -> create_tail_rec_helper (n-1) x (x::acc)
+  in
+  create_tail_rec_helper n x []
 ;;
-let rec dim (vec_float : vector) : int = 
-  match vec_float with
-  | [] -> raise DimensionError  
-  | _::[] -> 1
-  | _::xs -> 1 + dim xs
-;; 
+
+let dim (vec_float : vector) : int = 
+  let rec dim_tail_rec_helper (vec_float : vector) (acc : int) : int = 
+    match vec_float with
+    | [] -> raise DimensionError
+    | _::[] -> acc + 1
+    | _::xs -> dim_tail_rec_helper xs (acc + 1)
+  in
+  dim_tail_rec_helper vec_float 0
+
 let is_legal_dim (vec_float : vector) : bool  = 
   match vec_float with
   | [] -> false             
   | _::_ -> true
 ;;
-let rec is_zero (v : vector) : bool = 
-  if(not (is_legal_dim v)) then
-    raise DimensionError
-  else
+let is_zero (v : vector) : bool = 
+  let rec is_zero_tail_rec_helper (v : vector) : bool = 
     match v with
     | [] -> raise DimensionError 
     | 0.0 :: [] -> true
-    | x::xs -> if x = 0.0 then is_zero xs else false
-;; 
-let rec is_zero_close (v : vector) : bool = 
-  if(not (is_legal_dim v)) then
-    raise DimensionError
-  else
+    | x::xs -> if x = 0.0 then is_zero_tail_rec_helper xs else false
+  in
+  is_zero_tail_rec_helper v
+;;  
+
+let is_zero_close (v : vector) : bool =
+  let rec is_zero_close_tail_rec_helper (v : vector) : bool =
     match v with
-    | [] -> raise DimensionError 
+    | [] -> raise DimensionError
     | x :: [] -> if (f_eq_z x) then true else false
-    | x::xs -> if (f_eq_z x) then is_zero_close xs else false
+    | x::xs -> if (f_eq_z x) then is_zero_close_tail_rec_helper xs else false
+  in
+  is_zero_close_tail_rec_helper v
+;;
 let unit (n : int) (j : int) : vector = 
   if(n < 1) then 
     raise DimensionError
@@ -108,40 +117,65 @@ let unit (n : int) (j : int) : vector =
     else
       (create (n-1) 0.0) @ (1.0::[])
   else
-    (create (j-1) 0.0) @ (1.0::[]) @ (create (n-j) 0.0);;
+    (create (j-1) 0.0) @ (1.0::[]) @ (create (n-j) 0.0)
 ;;
-let rec scale (c : float) (v : vector) : vector =
-  if(not (is_legal_dim v) ) then
-    raise DimensionError
-  else
+
+let reverse_vec (v : vector) =
+  let rec reverse_vec_tail_rec_helper (v : vector) (acc : vector) : vector =
     match v with
-    | [] -> raise DimensionError           
-    | x1::[] -> c *. x1 :: []
-    | x::xs -> (c *. x) :: (scale c xs)
+    | [] -> acc
+    | x::xs -> reverse_vec_tail_rec_helper xs (x::acc)
+  in
+  reverse_vec_tail_rec_helper v [] 
+
+let scale (c : float) (v : vector) : vector =
+  let rec scale_tail_rec_helper (c : float) (v : vector) (acc : vector) : vector =
+    if(not (is_legal_dim v) ) then
+      raise DimensionError
+    else
+      match v with
+      | [] -> raise DimensionError           
+      | x1::[] -> (c *. x1) :: acc
+      | x::xs -> scale_tail_rec_helper c xs ((c *. x) :: acc)
+  in
+  reverse_vec (scale_tail_rec_helper c v [])
 ;;
-let rec addv (v1 : vector) (v2 : vector) : vector =
-  match v1, v2 with
-  | x1::[], x2::[] -> (x1 +. x2)::[]
-  | x1::xs1, x2::xs2 -> (x1 +. x2)::(addv xs1 xs2)
-  | _ -> raise DimensionError                     
-;;                         
-let rec dot_prod (v1 : vector) (v2 : vector) : float = 
-  match v1, v2 with
-  | x1::[], x2::[] -> x1 *. x2
-  | x1::xs1, x2::xs2 -> (x1*.x2) +. (dot_prod xs1 xs2)
-  | _ -> raise DimensionError                                   
-;;                             
-let rec inv (v : vector) : vector = 
-  if(not (is_legal_dim v)) then
-    raise DimensionError
-  else  
-    match v with
-    | [] -> raise DimensionError 
-    | x::[] -> (-1.0 *.x)::[]
-    | x::xs -> -1.0*.x::(inv xs)
+  
+let addv (v1 : vector) (v2 : vector) : vector =
+  let rec addv_tail_rec_helper (v1 : vector) (v2 : vector) (acc : vector) : vector =
+    match v1, v2 with
+    | x1::[], x2::[] -> (x1 +. x2)::acc
+    | x1::xs1, x2::xs2 -> addv_tail_rec_helper xs1 xs2 ((x1 +. x2)::acc)
+    | _ -> raise DimensionError
+  in
+
+  reverse_vec (addv_tail_rec_helper v1 v2 [])   
 ;;
+
+let dot_prod (v1 : vector) (v2 : vector) : float = 
+  let rec dot_prod_tail_rec_helper (v1 : vector) (v2 : vector) (acc : float) : float = 
+    match v1, v2 with
+    | x1::[], x2::[] -> acc +. (x1 *. x2)
+    | x1::xs1, x2::xs2 -> dot_prod_tail_rec_helper xs1 xs2 (acc +. (x1 *. x2))
+    | _ -> raise DimensionError
+  in
+  dot_prod_tail_rec_helper v1 v2 0.0
+;;
+let inv (v : vector) : vector = 
+  let rec inv_tail_rec_helper (v : vector) (acc : vector) : vector = 
+    if(not (is_legal_dim v)) then
+      raise DimensionError
+    else  
+      match v with
+      | [] -> raise DimensionError 
+      | x::[] -> (-1.0 *.x)::acc
+      | x::xs -> inv_tail_rec_helper xs ((-1.0 *. x)::acc)
+  in
+  reverse_vec (inv_tail_rec_helper v [])
+;; 
+
 let length (v : vector) : float =
-  sqrt(dot_prod v v)
+  sqrt(dot_prod v v) 
 ;;
 let in_domain_acos (cos_theta:float) : float = 
   if(cos_theta > 1.0) then
@@ -161,8 +195,6 @@ let angle (v1 : vector) (v2 : vector) : float =
     let cos_theta = v1_dot_v2 /. ( len_v1 *. len_v2) in 
     let s_cos_theta = in_domain_acos cos_theta in
     acos s_cos_theta
-;;
-
 
 (*===================================================================================*)
     (* Expression Definition | Defitnitional Interpreter | Types and Type Checking*)
@@ -208,6 +240,8 @@ exception Foo;;
 (*===================================================================================*)
 
 let rec type_of (e : expr) : types = 
+
+  let cp_exp = e in
   match e with
   | T -> Bool
   | F -> Bool
@@ -217,23 +251,23 @@ let rec type_of (e : expr) : types =
       try 
         let n = dim v in
         Vector n
-      with _ -> raise (Wrong(e))
+      with _ -> raise (Wrong(cp_exp))
     )
   | Add (e1, e2) -> 
     (
       match (type_of e1, type_of e2) with
       | Bool, Bool -> Bool
       | Scalar, Scalar -> Scalar
-      | Vector n, Vector m -> if n = m then Vector n else raise(Wrong(e))
-      | _ -> raise (Wrong(e))
+      | Vector n, Vector m -> if n = m then Vector n else raise(Wrong(cp_exp))
+      | _ -> raise (Wrong(cp_exp))
     )
   | Sub (e1, e2) -> 
     (
       match (type_of e1, type_of e2) with
       (* | Bool, Bool -> Bool *)
       | Scalar, Scalar -> Scalar
-      | Vector n, Vector m -> if n = m then Vector n else raise(Wrong(e))
-      | _ -> raise(Wrong(e))
+      | Vector n, Vector m -> if n = m then Vector n else raise(Wrong(cp_exp))
+      | _ -> raise(Wrong(cp_exp))
     )
   | Inv e1 -> 
     ( 
@@ -250,14 +284,14 @@ let rec type_of (e : expr) : types =
       | Scalar, Scalar -> Scalar
       | Scalar, Vector n -> Vector n
       | Vector n, Scalar -> Vector n
-      | _ -> raise (Wrong(e))
+      | _ -> raise (Wrong(cp_exp))
     )
 
   | DotProd (e1, e2) -> 
     (
       match (type_of e1, type_of e2) with
-      | Vector n, Vector m -> if n = m then Scalar else raise(Wrong(e))
-      | _ -> raise(Wrong(e))
+      | Vector n, Vector m -> if n = m then Scalar else raise(Wrong(cp_exp))
+      | _ -> raise(Wrong(cp_exp))
     )
 
   | Mag e1 -> 
@@ -265,14 +299,14 @@ let rec type_of (e : expr) : types =
       match (type_of e1) with
       | Scalar -> Scalar
       | Vector _ -> Scalar
-      | _ -> raise (Wrong(e))
+      | _ -> raise (Wrong(cp_exp))
     )
 
   | Angle (e1, e2) -> 
     (
       match (type_of e1, type_of e2) with
-      | Vector n, Vector m -> if n = m then Scalar else raise(Wrong(e))
-      | _ -> raise (Wrong(e))
+      | Vector n, Vector m -> if n = m then Scalar else raise(Wrong(cp_exp))
+      | _ -> raise (Wrong(cp_exp))
     )
 
   | IsZero e1 -> 
@@ -293,10 +327,10 @@ let rec type_of (e : expr) : types =
             if(e2_type = e3_type) then
               e2_type
             else
-              raise (Wrong(e))        
+              raise (Wrong(cp_exp))        
 
         )
-      | _ -> raise (Wrong(e))
+      | _ -> raise (Wrong(cp_exp))
     )
 
 ;;
@@ -308,7 +342,7 @@ let rec type_of (e : expr) : types =
 
 let rec eval (e : expr) : values = 
 
-  let _ = type_of e in
+  let cp_exp = e in
 
   match e with
   | T -> B true
@@ -324,9 +358,9 @@ let rec eval (e : expr) : values =
         (
           try
             V (addv v1 v2)
-          with _ -> raise (Wrong(e))
+          with _ -> raise (Wrong(cp_exp))
         )
-      | _ -> raise (Wrong(e))
+      | _ -> raise (Wrong(cp_exp))
     )
   | Sub (e1, e2) ->
     (
@@ -336,9 +370,9 @@ let rec eval (e : expr) : values =
         (
           try  
             V (addv v1 (inv v2))
-          with _ -> raise (Wrong(e))
+          with _ -> raise (Wrong(cp_exp))
         )
-      | _ -> raise (Wrong(e))
+      | _ -> raise (Wrong(cp_exp))
     )
   | Inv e1 ->
     (
@@ -349,7 +383,7 @@ let rec eval (e : expr) : values =
         (
           try
             V (inv v)
-          with _ -> raise (Wrong(e))
+          with _ -> raise (Wrong(cp_exp))
         )
     )
   | ScalProd (e1, e2) -> 
@@ -361,15 +395,15 @@ let rec eval (e : expr) : values =
         (
           try
             V (scale s v)
-          with _ -> raise (Wrong(e))
+          with _ -> raise (Wrong(cp_exp))
         )
       | V v, S s -> 
         (
           try
             V (scale s v)
-          with _ -> raise (Wrong(e))
+          with _ -> raise (Wrong(cp_exp))
         )
-      | _ -> raise (Wrong(e))
+      | _ -> raise (Wrong(cp_exp))
     )
   | DotProd (e1, e2) -> 
     (
@@ -379,9 +413,9 @@ let rec eval (e : expr) : values =
           try
             let dot_prod_val = dot_prod v1 v2 in
             S dot_prod_val
-          with _ -> raise (Wrong(e))
+          with _ -> raise (Wrong(cp_exp))
         )
-      | _ -> raise (Wrong(e))
+      | _ -> raise (Wrong(cp_exp))
     )
   | Mag e1 -> 
     (
@@ -391,9 +425,9 @@ let rec eval (e : expr) : values =
         ( try 
             let v_mag = length v in
             S v_mag
-          with _ -> raise (Wrong(e))
+          with _ -> raise (Wrong(cp_exp))
         )
-      | _ -> raise (Wrong(e))
+      | _ -> raise (Wrong(cp_exp))
     )
   | Angle (e1, e2) -> 
     (
@@ -403,9 +437,9 @@ let rec eval (e : expr) : values =
           try
             let theta_v1_v2 = angle v1 v2 in   
             S theta_v1_v2
-          with _ -> raise (Wrong(e))
+          with _ -> raise (Wrong(cp_exp))
         )
-      | _ -> raise (Wrong(e))
+      | _ -> raise (Wrong(cp_exp))
     )
   | IsZero e1 -> 
     (
@@ -414,23 +448,32 @@ let rec eval (e : expr) : values =
       | V v -> 
         (
           try
-            let bval = is_zero v in
+            let bval = is_zero_close v in
             B bval
-          with _ -> raise (Wrong(e))
+          with _ -> raise (Wrong(cp_exp))
         )
-      | _ -> raise (Wrong(e))
+      | _ -> raise (Wrong(cp_exp))
     )
   | Cond (e1, e2, e3) -> 
     (
       match eval e1 with
       | B b -> if b = true then eval e2 else eval e3
-      | _ -> raise (Wrong(e))  
+      | _ -> raise (Wrong(cp_exp))  
     )
 ;;
 
 
 (*===================================================================================*)
 
+(* let v = addv [1.0; 2.0] [3.0; 4.0];;
+
+List.iter (Printf.printf "%0.2f ") v;
+  Printf.printf "\n"; *)
+
+  (* let v = eval (Angle((ConstS (34.33)), (ConstV [2.0; 0.0; 0.0])));; *)
+  (* let v = V (inv (scale 5.2 (unit 10 4)));;
+  match v with
+  | V v -> List.iter (Printf.printf "%0.2f ") v;
+  | _ -> Printf.printf "Not a Vector\n";; *)
+
 (*===================================================================================*)
-
-
