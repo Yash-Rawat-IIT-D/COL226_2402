@@ -3,5 +3,8 @@
 (** @canonical Foo.A2 *)
 module A2 = Foo__A2
 
+(** @canonical Foo.My_testcases *)
+module My_testcases = Foo__My_testcases
+
 (** @canonical Foo.Testcases *)
 module Testcases = Foo__Testcases

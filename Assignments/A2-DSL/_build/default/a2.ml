@@ -342,6 +342,8 @@ let rec type_of (e : expr) : types =
 
 let rec eval (e : expr) : values = 
 
+  (* let _ = type_of e in *)
+
   let cp_exp = e in
 
   match e with
