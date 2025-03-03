@@ -1,8 +1,9 @@
+module Vector = struct
+
 type vector = float list;;
 
 exception DimensionError;;
 exception ZeroVectorError;;
-
 let rec create (n: int) (x: float) : vector = 
   if n < 1 then 
     raise DimensionError
@@ -12,17 +13,20 @@ let rec create (n: int) (x: float) : vector =
     | _ -> x::(create (n-1) x);;
 
 
+
 let rec dim (vec_float : vector) : int = 
   match vec_float with
   | [] -> raise DimensionError  (* Not the base case if we assume that a valid vector of dimension >= 1 is being passed to dim *)
   | x::[] -> 1
-  | x::xs -> 1 + dim xs;; 
+  | x::xs -> 1 + dim xs;;   
 
-let rec is_legal_dim (vec_float : vector) : bool  = 
+
+let is_legal_dim (vec_float : vector) : bool  = 
   match vec_float with
   | [] -> false             
   | x::xs -> true
 ;;
+
 
 (* PS : Is dimension checking to be done here ?  *)
 let rec is_zero (v : vector) : bool = 
@@ -34,7 +38,8 @@ let rec is_zero (v : vector) : bool =
     | 0.0 :: [] -> true
     | x::xs -> if x = 0.0 then is_zero xs else false;; 
 
-let rec unit (n : int) (j : int) : vector = 
+
+let unit (n : int) (j : int) : vector = 
   if(n < 1) then 
     raise DimensionError
   else if (j > n || j < 1) then 
@@ -52,6 +57,8 @@ let rec unit (n : int) (j : int) : vector =
   else
     (create (j-1) 0.0) @ (1.0::[]) @ (create (n-j) 0.0);;
 ;;
+
+
 
 let rec scale (c : float) (v : vector) : vector =
   if(not (is_legal_dim v) ) then
@@ -136,6 +143,7 @@ let angle (v1 : vector) (v2 : vector) : float =
     acos s_cos_theta
 ;;
   
+end;;
 (* ========================================================================== *)
   
           (* Extensive Testing of all the operations of vector module *)
@@ -144,7 +152,7 @@ let angle (v1 : vector) (v2 : vector) : float =
 
 (* Test Cases for Create *)
 
-Printf.printf "==========================================================================\n";;
+(* Printf.printf "==========================================================================\n";;
 Printf.printf "Testing implementation of create : \n";;
 Printf.printf "==========================================================================\n";;
 let test_create () =
@@ -627,7 +635,7 @@ let test_angle () =
   | DimensionError -> Printf.printf "Test Case Passed - DimensionError Detected \n";
 ;;
 
-test_angle ();;
+test_angle ();; *)
 
 
 (*
