@@ -1,3 +1,55 @@
-if (x > 0) { return 1; } else { return 0; }
-while (i < 10) { i := i + 1; }
-for (j := 0; j < 5; j := j + 1) { Print j; }
+// A more complex test case with multiple operations
+// This comment will be ignored by the lexer
+
+int x := 42;
+int y := -20;
+bool status := false;
+
+vector_n v1 := 4 
+               [10, 20, 30, 40];
+vector_f v2 := 4 
+               [1.1, 2.2, 3.3, 4.4];
+
+matrix_n m1 := 3, 2 
+               [[1, 2], [3, 4], [5, 6]];
+matrix_f m2 := 2, 3 
+               [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]];
+/*
+This is a multi line comment
+Because it is a comment
+It will also be ignored by the lexer
+*/
+
+if (x > 0 and y < 3) {
+    x := x / 2;
+    y := y + 2;
+} elif (x < 0 or status) {
+    x := x * -1;
+    status := true;
+} elif {
+    x := 0;
+    Print (x);
+}
+
+while (x > 1) {
+    x := x - 1;
+    if (x mod 2 = 0) {
+        Print (x);
+    } else {
+        Print (x);
+    }
+}
+
+for (i := 1; i <= 4; i := i + 1) {
+    v1 := scal_v(v1, 2);
+    v2 := add_v(v2, 4 
+                    [0.1, 0.1, 0.1, 0.1]);
+}
+
+m1 := transp_m(m1);
+m2 := mul_m(m1, m2);
+
+Print (m1);
+Print (m2);
+
+return 1;

@@ -19,12 +19,10 @@ type token =
 	| INT_T | FLOAT_T | BOOL_T | VECTOR_N_T | VECTOR_F_T | MATRIX_N_T | MATRIX_F_T
 
 	| CONS_N of int |	CONS_F of float | CONS_B of bool | IDENT of string
-
-	| CONS_VN of vector_int | CONS_VF of vector_fl | CONS_MN of matrix_int | CONS_MF of matrix_fl
 	
-	| CONS_VN_N of int * vector_int | CONS_VF_N of int * vector_fl
+	| CONS_VN of int * vector_int | CONS_VF of int * vector_fl
 
-	| CONS_MN_M_N of int * matrix_int | CONS_MF_M_F of int * matrix_fl
+	| CONS_MN of int * int * matrix_int | CONS_MF of int * int * matrix_fl
 
 	(* Handling Operations on Boolean *)
 	

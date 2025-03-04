@@ -32,4 +32,7 @@ test: $(EXEC)
 clean:
 	rm -f *.cmo *.cmi *.o $(LEXER).ml $(EXEC) output/*.out
 
-.PHONY: all clean
+clean_test:
+	rm -f output/*.out
+
+.PHONY: all clean test

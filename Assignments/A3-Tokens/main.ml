@@ -4,27 +4,27 @@ open Lexing
 open Token
 open My_lexer
 
-(* Helper function to print a float list as a comma-separated vector *)
-let print_vector_fl vec =
+let print_vector_fl dim vec =
   let elements = String.concat ", " (List.map string_of_float vec) in
-  Printf.printf "CONS_VF([%s])\n" elements
-let print_matrix_fl mat =
+  Printf.printf "CONS_VF(%d [%s])\n" dim elements
+
+let print_matrix_fl dim_m dim_n mat =
+      let rows = List.map (fun row -> 
+        let elements = String.concat ", " (List.map string_of_float row) in
+        Printf.sprintf "[%s]" elements
+      ) mat in
+      Printf.printf "CONS_MF(%d %d [%s])\n" (dim_m) (dim_n) (String.concat ", " rows) 
+
+let print_vector_int dim vec =
+  let elements = String.concat ", " (List.map string_of_int vec) in
+  Printf.printf "CONS_VN(%d [%s])\n" dim elements 
+
+let print_matrix_int dim_m dim_n mat =
     let rows = List.map (fun row -> 
-      let elements = String.concat ", " (List.map string_of_float row) in
+      let elements = String.concat ", " (List.map string_of_int row) in
       Printf.sprintf "[%s]" elements
     ) mat in
-    Printf.printf "CONS_MF([%s])\n" (String.concat ", " rows)
-
-let print_vector_int vec =
-  let elements = String.concat ", " (List.map string_of_int vec) in
-  Printf.printf "CONS_VN([%s])\n" elements 
-
-let print_matrix_int mat =
-  let rows = List.map (fun row -> 
-    let elements = String.concat ", " (List.map string_of_int row) in
-    Printf.sprintf "[%s]" elements
-  ) mat in
-  Printf.printf "CONS_MN([%s])\n" (String.concat ", " rows)  
+    Printf.printf "CONS_MN(%d %d [%s])\n" (dim_m) (dim_n) (String.concat ", " rows)
 
 
 (* Function to print tokens *)
@@ -49,10 +49,10 @@ let print_token (tok : token) = match tok with
   | CONS_F f -> Printf.printf "CONS_F(%f)\n" f
   | CONS_B b -> Printf.printf "CONS_B(%b)\n" b
   | IDENT s -> Printf.printf "IDENT(%s)\n" s
-  | CONS_VN v -> print_vector_int v
-  | CONS_VF v -> print_vector_fl v
-  | CONS_MN m -> print_matrix_int m
-  | CONS_MF m -> print_matrix_fl m
+  | CONS_VN (n,v) -> print_vector_int n v
+  | CONS_VF(n,v) -> print_vector_fl n v 
+  | CONS_MN (m,n,mat) -> print_matrix_int m n mat
+  | CONS_MF (m,n,mat) -> print_matrix_fl m n mat
   | NOT -> print_endline "NOT"
   | AND -> print_endline "AND"
   | OR -> print_endline "OR"
@@ -82,6 +82,7 @@ let print_token (tok : token) = match tok with
   | ASSIGN -> print_endline "ASSIGN"
   | IF -> print_endline "IF"
   | ELSE -> print_endline "ELSE"
+  | ELSE_IF -> print_endline "ELSE_IF"
   | WHILE -> print_endline "WHILE"
   | FOR -> print_endline "FOR"
   | BREAK -> print_endline "BREAK"

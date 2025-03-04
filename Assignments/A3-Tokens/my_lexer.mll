@@ -2,6 +2,8 @@
 {
   open Token
 
+
+	exception Illogical_Lex of string
   (* Helper function for keyword or identifiers *)
   let keyword_or_ident s =
     match s with
@@ -103,12 +105,10 @@ let sign = ['-' '+']?
 
 let fname = '"' [^'"']* '"'
 let ident_or_kw = (alpha | '_'| '\'') alnum_score*
-let w_space = [' ' '\t' '\n']+
-
+let w_space = [' ' '\t' '\n']
 (* Regular Expressions for Integers, Floats *)
 
 let int_reg = sign num+
-
 let fl1 = sign num + "." num*
 let fl2 = sign "." num+
 let fl3 = num+ ['e' 'E'] sign num+
@@ -117,12 +117,11 @@ let float_reg = fl1 | fl2 | fl3 | float_sci_reg
 
 (* Regular Expressions for Vectors and Matrices *)
 
-let vec_n_reg = '[' w_space* int_reg (w_space* ',' w_space* int_reg)* w_space* ']'
-let mat_n_reg = '[' w_space* vec_n_reg (w_space* ',' w_space* vec_n_reg)* w_space* ']'
+let vec_n_reg = '[' w_space* int_reg (w_space* ',' w_space*  int_reg)* w_space*  ']'
+let mat_n_reg = '[' w_space*  vec_n_reg (w_space* ',' w_space*  vec_n_reg)* w_space*  ']'
 
-let vec_f_reg = '[' w_space* float_reg (w_space* ',' w_space* float_reg)* w_space* ']'
-let mat_f_reg = '[' w_space* vec_f_reg (w_space* ',' w_space* vec_f_reg)* w_space* ']'
-
+let vec_f_reg = '[' w_space*  float_reg (w_space* ',' w_space*  float_reg)* w_space*  ']'
+let mat_f_reg = '[' w_space*  vec_f_reg (w_space* ',' w_space*  vec_f_reg)* w_space*  ']'
 
 (* Regexp for handling operations and  parenthesis*)
 
@@ -139,17 +138,17 @@ let comm_reg = (single_comm_reg | multi_comm_reg)
 (* Tokenizer rules *)
 rule token = parse
 	(* Skipping over whitespace	*)
-  | w_space    { token lexbuf }
+  	| w_space+    { token lexbuf }
 	(* keyword or identifier tokens *)
-  | ident_or_kw as s { keyword_or_ident s }
-  | fname as s { FNAME (String.sub s 1 (String.length s - 2)) }
-  (* Constants of Integer, Float, Vector, Matrix type*)
-  | int_reg as s { CONS_N (int_of_string s) }
-  |	float_reg as s { CONS_F (float_of_string s) }
-	| vec_n_reg as s {let vec = str_to_vec_n s in CONS_VN vec}
-	| vec_f_reg as s {let vec = str_to_vec_f s in CONS_VF vec}
-	| mat_n_reg as s {let mat = str_to_mat_n s in CONS_MN mat}
-	| mat_f_reg as s {let mat = str_to_mat_f s in CONS_MF mat}
+ 	| ident_or_kw as s { keyword_or_ident s }
+  	| fname as s { FNAME (String.sub s 1 (String.length s - 2)) }
+  	(* Constants of Integer, Float, Vector, Matrix type*)
+  	| int_reg as s { CONS_N (int_of_string s) }
+  	|	float_reg as s { CONS_F (float_of_string s) }
+	| (int_reg as vdim) w_space+ (vec_n_reg as vecn) {let vec = str_to_vec_n vecn in CONS_VN (int_of_string vdim, vec)}
+	| (int_reg as mdim) w_space* ',' w_space* (int_reg as ndim) w_space+ (mat_n_reg as matn) {let mat = str_to_mat_n matn in CONS_MN (int_of_string mdim, int_of_string ndim, mat)}
+	| (int_reg as vdim) w_space+ (vec_f_reg as vecf) {let vec = str_to_vec_f vecf in CONS_VF (int_of_string vdim, vec)}
+	| (int_reg as mdim) w_space* ',' w_space* (int_reg as ndim) w_space+ (mat_f_reg as matf) {let mat = str_to_mat_f matf in CONS_MF (int_of_string mdim, int_of_string ndim, mat)}
 	(* Handling Brackets and Braces *)
 	| '(' { LPAREN }
 	| ')' { RPAREN }
@@ -176,3 +175,4 @@ rule token = parse
 	| comm_reg { token lexbuf }	
 	(* Handling EOF *)
   | eof { EOF }
+	| _ as c { raise (Illogical_Lex (Printf.sprintf "Unrecognized Token: %c" c)) }
