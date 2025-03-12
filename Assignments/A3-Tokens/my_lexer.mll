@@ -128,6 +128,7 @@ let mat_f_reg = '[' w_space*  vec_f_reg (w_space* ',' w_space*  vec_f_reg)* w_sp
 let brack_reg = ('(' | ')' | '{' | '}' | '[' | ']')
 let num_op_reg = ('+'| '-' |'/' | '*')
 let comp_reg = ( '=' | '<' | '>' | "!=" | "<=" | ">=")
+let bsln_reg = "\\n"
 
 (* Regexp for handling comments and multi line comments*)
 
@@ -145,10 +146,10 @@ rule token = parse
   	(* Constants of Integer, Float, Vector, Matrix type*)
   	| int_reg as s { CONS_N (int_of_string s) }
   	|	float_reg as s { CONS_F (float_of_string s) }
-	| (int_reg as vdim) w_space+ (vec_n_reg as vecn) {let vec = str_to_vec_n vecn in CONS_VN (int_of_string vdim, vec)}
-	| (int_reg as mdim) w_space* ',' w_space* (int_reg as ndim) w_space+ (mat_n_reg as matn) {let mat = str_to_mat_n matn in CONS_MN (int_of_string mdim, int_of_string ndim, mat)}
+	| (int_reg as vdim) w_space* (w_space+|bsln_reg) w_space* (vec_n_reg as vecn) {let vec = str_to_vec_n vecn in CONS_VN (int_of_string vdim, vec)}
+	| (int_reg as mdim) w_space* ','? w_space* (int_reg as ndim) w_space* (w_space+|bsln_reg) w_space* (mat_n_reg as matn) {let mat = str_to_mat_n matn in CONS_MN (int_of_string mdim, int_of_string ndim, mat)}
 	| (int_reg as vdim) w_space+ (vec_f_reg as vecf) {let vec = str_to_vec_f vecf in CONS_VF (int_of_string vdim, vec)}
-	| (int_reg as mdim) w_space* ',' w_space* (int_reg as ndim) w_space+ (mat_f_reg as matf) {let mat = str_to_mat_f matf in CONS_MF (int_of_string mdim, int_of_string ndim, mat)}
+	| (int_reg as mdim) w_space* ','? w_space* (int_reg as ndim) w_space* (w_space+|bsln_reg) w_space* (mat_f_reg as matf) {let mat = str_to_mat_f matf in CONS_MF (int_of_string mdim, int_of_string ndim, mat)}
 	(* Handling Brackets and Braces *)
 	| '(' { LPAREN }
 	| ')' { RPAREN }
@@ -174,5 +175,5 @@ rule token = parse
 	(* Handling Comments (Ignored) *)
 	| comm_reg { token lexbuf }	
 	(* Handling EOF *)
-  | eof { EOF }
+  	| eof { EOF }
 	| _ as c { raise (Illogical_Lex (Printf.sprintf "Unrecognized Token: %c" c)) }

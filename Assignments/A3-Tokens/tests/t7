@@ -1,0 +1,20 @@
+// Test Case for Matrix Operations
+
+matrix_n mat1 := 3,2 
+                 [[1, 2], [3, 4], [5, 6]];
+matrix_n mat2 := 3,2 
+                 [[7, 8], [9, 10], [11, 12]];
+
+matrix_n sum_mat := add_m(mat1, mat2);
+matrix_n scaled_mat := scal_m(2, mat1);
+matrix_n transposed_mat := transp_m(mat1);
+float determinant := det_m(mat1);
+
+Print(sum_mat); Print(scaled_mat); Print(transposed_mat); Print(determinant);
+
+matrix_n product_mat := mul_m(mat1, transp_m(mat2));
+matrix_n identity := 2,2 
+                     [[1, 0], [0, 1]];
+matrix_n result := mul_m(identity, mat1);
+
+Print(product_mat); Print(result);
