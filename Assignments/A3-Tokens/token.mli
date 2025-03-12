@@ -12,7 +12,7 @@ type token =
 	(* Hanadling of Parenthisis and Braces *)
 
 	| LPAREN  | RPAREN 	(* Bracket = ( Or ) *)
-	| LBRACE  | RBRACE 	(* Brace = { Or } *)
+	| LBRACE  | RBRACE 	(*Logical Operations Brace = { Or } *)
 	| LSQUARE | RSQUARE (* Square Bracket = [ Or ]] *)
 
 	(* Handling of Constants and Identifiers,  Constructors for different types *)

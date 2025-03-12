@@ -9,10 +9,14 @@ exception UndefinedVariable of string
 exception InvalidCondition of string
 
 (*===================================================================================*)
-                                  (* Vector and Matrix Helper *)
+                          (* Vector and Matrix Helper *)
 (*===================================================================================*)
 
 let vec_dim vec = List.length vec
+let mat_dim mat = match mat with 
+  | [] -> raise (DimensionMismatch ("Empty Matrix not allowed"))
+  | row::_ -> (List.length mat, List.length row)
+
 let vec_dim_check exp_dim vec =
   List.length vec = exp_dim
 
@@ -25,6 +29,30 @@ let mat_dim_check exp_rows exp_cols mat =
 
 let add_vec_n v1 v2 =
   if vec_dim v1 <> vec_dim v2 then raise (DimensionMismatch ("Vector dimensions do not match for addition")) 
+  else
+    List.map2 (+) v1 v2
+
+let add_vec_f v1 v2 =
+  if List.length v1 <> List.length v2 then
+    raise (DimensionMismatch "Vector dimensions do not match for addition")
+  else
+    List.map2 (+.) v1 v2
+
+let add_mat_n m1 m2 =
+  if List.length m1 <> List.length m2 then
+    raise (DimensionMismatch("Matrix row dimensions not same for addition"))
+  else if List.length (List.hd m1) <> List.length (List.hd m2) then
+    raise (DimensionMismatch("Matrix column dimensions not same for addition"))
+  else
+    List.map2 (fun r1 r2 -> add_vec_n r1 r2) m1 m2
+
+let add_mat_f m1 m2 =
+  if List.length m1 <> List.length m2 then
+    raise (DimensionMismatch("Matrix row dimensions not same for addition"))
+  else if List.length (List.hd m1) <> List.length (List.hd m2) then
+    raise (DimensionMismatch("Matrix column dimensions not same for addition"))
+  else
+    List.map2 (fun r1 r2 -> add_vec_f r1 r2) m1 m2
 
 (* Values representing the primary data types in our PL *)
 (* Otherwise the basecases of our AST are now handled in a separate specification *)
@@ -75,6 +103,6 @@ type stmt =
   | Continue
   | Input of string option * string (* Assigning some variable value in current state of program *)
   | Print of exp
-  | Blk of stmt list  (* One of the most important ideas of a program *)
+  | Block of stmt list  (* One of the most important ideas of a program *)
 
 
