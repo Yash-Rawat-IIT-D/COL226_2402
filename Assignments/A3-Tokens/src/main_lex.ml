@@ -81,6 +81,7 @@ let print_token (tok : token) = match tok with
   | DET_MAT -> print_endline "DET_MAT"
   | ASSIGN -> print_endline "ASSIGN"
   | IF -> print_endline "IF"
+  | THEN -> print_endline "THEN"
   | ELSE -> print_endline "ELSE"
   | ELSE_IF -> print_endline "ELSE_IF"
   | WHILE -> print_endline "WHILE"

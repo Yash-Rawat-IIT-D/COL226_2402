@@ -39,7 +39,7 @@
 
 // Tokens for Control Flow and Branching Constructs and Structural Constructs 
 %token LPAREN RPAREN LBRACE RBRACE LSQUARE RSQUARE
-%token IF ELSE ELSE_IF WHILE FOR RETURN BREAK CONTINUE PRINT INPUT
+%token IF THEN ELSE ELSE_IF WHILE FOR RETURN BREAK CONTINUE PRINT INPUT
 %token SEMICOLON ASSIGN COMMA EOF
 
 // Operator Precedence and Associativity 
@@ -195,6 +195,8 @@ expr:
   // Input and Output Statements
   | INPUT LPAREN RPAREN       { Input None }
   | INPUT LPAREN FNAME RPAREN { Input (Some $3) }
+  // Cond Expression
+  | IF expr THEN expr ELSE expr { COND ($2, $4, $6) }
   // Parenthesized Expressions
   | LPAREN expr RPAREN        { $2 }
   | _                         { raise (SyntaxError "Invalid Expression") }

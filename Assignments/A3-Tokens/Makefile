@@ -1,50 +1,51 @@
-# Paths and filenames
-SRC_DIR = src
-LEXER = $(SRC_DIR)/my_lexer
-MAIN = $(SRC_DIR)/main
-TOKEN = $(SRC_DIR)/token
-EXEC = my_lexer_test
+LEXER = src/my_lexer
+PARSER = src/my_parser
+TOKEN = src/token
+AST = src/my_ast
+TYPE_CHECK = src/type_check
 
-# Build the lexer and main components
+EXEC = my_parser_test
+
 all: $(EXEC)
 
-# Build token interface FIRST (Add -I src to include directory)
+# Compile the token interface
 $(TOKEN).cmi: $(TOKEN).mli
-	ocamlc -I $(SRC_DIR) -c $<
+	ocamlc -c -I src $<
 
-# Generate lexer from .mll file AFTER token interface is compiled
+# Generate parser code from .mly file
+$(PARSER).ml $(PARSER).mli: $(PARSER).mly
+	ocamlyacc $<
+
+# Generate lexer code from .mll file
 $(LEXER).ml: $(LEXER).mll $(TOKEN).cmi
 	ocamllex $<
 
-# Compile lexer AFTER token interface is compiled
+# Compile the AST file
+$(AST).cmo: $(AST).ml $(TOKEN).cmi
+	ocamlc -c -I src $<
+
+# Compile the lexer (make sure it knows about the token module)
 $(LEXER).cmo: $(LEXER).ml $(TOKEN).cmi
-	ocamlc -I $(SRC_DIR) -c $(LEXER).ml
+	ocamlc -c -I src $<
 
-# Compile main program
-$(MAIN).cmo: $(MAIN).ml $(TOKEN).cmi $(LEXER).cmo
-	ocamlc -I $(SRC_DIR) -c $(MAIN).ml
+# Compile the parser
+$(PARSER).cmo: $(PARSER).ml $(TOKEN).cmi $(AST).cmo
+	ocamlc -c -I src $<
 
-# Link and create the executable
-$(EXEC): $(LEXER).cmo $(MAIN).cmo
-	ocamlc -o $(EXEC) -I $(SRC_DIR) $^
+# Compile the type checker
+$(TYPE_CHECK).cmo: $(TYPE_CHECK).ml $(AST).cmi $(TOKEN).cmi
+	ocamlc -c -I src $<
 
-# Run test cases
-test: $(EXEC)
-	@mkdir -p output
-	@for file in tests/*; do \
-		if [ -f "$$file" ]; then \
-			filename=$$(basename "$$file"); \
-			./$(EXEC) "$$file" > "output/$$filename.out"; \
-		fi \
-	done
+# Link everything together into a single binary (for testing parser)
+$(EXEC): $(LEXER).cmo $(PARSER).cmo $(AST).cmo $(TYPE_CHECK).cmo
+	ocamlc -o $(EXEC) $^
 
-# Clean compiled files and outputs
+# Test compilation only
+test-grammar:
+	@echo "Checking if grammar compiles..."
+	@ocamlyacc $(PARSER).mly && echo "✅ Parser compiled successfully!" || echo "❌ Parser compilation failed!"
+
 clean:
-	rm -f $(SRC_DIR)/*.cmo $(SRC_DIR)/*.cmi $(SRC_DIR)/*.o $(LEXER).ml $(EXEC) output/*.out
+	rm -f src/*.cmo src/*.cmi src/*.o src/my_lexer.ml src/my_parser.ml src/my_parser.mli $(EXEC)
 
-# Clean only test outputs
-clean_test:
-	rm -f output/*.out
-
-# Declare phony targets
-.PHONY: all clean test clean_test
+.PHONY: all clean test-grammar

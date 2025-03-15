@@ -35,6 +35,7 @@
 	| "transp_m" -> TRP_MAT
 	| "det_m" -> DET_MAT
 	| "if" -> IF
+	| "then" -> THEN
 	| "else" -> ELSE
 	| "while" -> WHILE
 	| "for" -> FOR

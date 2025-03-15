@@ -44,7 +44,7 @@ type token =
 
 	(* Handling Control and Branch Constructs *)
 
-	| ASSIGN | IF | ELSE | ELSE_IF | WHILE | FOR | RETURN | BREAK | CONTINUE
+	| ASSIGN | IF | THEN |  ELSE | ELSE_IF | WHILE | FOR | RETURN | BREAK | CONTINUE
 
 	| SEMICOLON | COMMA 
 
