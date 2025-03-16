@@ -1,12 +1,14 @@
 (* Vector and Matrix Specifications *)
 open Token 
 
-(* Exceptions to be used by grammar, accessed via my_ast.ml *)  
+(* Exceptions to be used by grammar, accessed via my_ast.ml *)
+exception SyntaxError of string  
 exception TypeMismatch of string
 exception DimensionMismatch of string
 exception InvalidOperation of string
 exception UndefinedVariable of string
 exception InvalidCondition of string
+
 
 (*===================================================================================*)
                           (* Vector and Matrix Helper *)
@@ -65,7 +67,7 @@ type value =
 (* For handling type of assignments, and runtime checks for type consistency *)
 (* Eg : Compatibility of dimensions and types for matrix multiplication *)
 type typ = T_INT | T_FLOAT | T_BOOL
-        | T_VEC_N | T_FLOAT_N | T_MAT_N | T_MAT_F
+        | T_VEC_N | T_VEC_F | T_MAT_N | T_MAT_F | T_INP
 
 (* Majority operations of primary data types as supported by our PL fall in the \
    Category of Unary or binary operations , So to provide another abstract template for our 
@@ -76,9 +78,11 @@ type typ = T_INT | T_FLOAT | T_BOOL
 
 (* Binary Operators *)
 
-type bin_op = Add | Mul | Sub | Div | And | Or
+type bin_op = 
+  | Add | Mul | Sub | Div | And | Or
   | Modulo | Eq | Neq | Geq | Leq | Gt | Lt 
-  | Dot_Prod | Angle | Scal_Vec | Scal_Mat 
+  | Dot_Prod | Angle | Add_Vec | Scal_Vec 
+  | Add_Mat  | Scal_Mat  | Mat_Mul_Mat 
 
 (* Unary Operators *)
   
@@ -106,3 +110,118 @@ type stmt =
   | Block of stmt list  (* One of the most important ideas of a program *)
 
 
+type program = stmt list
+
+(*===================================================================================*)
+                              (* Utility Functions *)
+(*===================================================================================*)
+
+(* Convert float vector to string *)
+let string_of_vector_fl dim vec =
+  let elements = String.concat ", " (List.map string_of_float vec) in
+  Printf.sprintf "CONS_VF(%d [%s])" dim elements
+
+(* Convert float matrix to string *)
+let string_of_matrix_fl dim_m dim_n mat =
+  let rows = List.map (fun row -> 
+    let elements = String.concat ", " (List.map string_of_float row) in
+    Printf.sprintf "[%s]" elements
+  ) mat in
+  Printf.sprintf "CONS_MF(%d %d [%s])" dim_m dim_n (String.concat ", " rows)
+
+(* Convert int vector to string *)
+let string_of_vector_int dim vec =
+  let elements = String.concat ", " (List.map string_of_int vec) in
+  Printf.sprintf "CONS_VN(%d [%s])" dim elements
+
+(* Convert int matrix to string *)
+let string_of_matrix_int dim_m dim_n mat =
+  let rows = List.map (fun row -> 
+    let elements = String.concat ", " (List.map string_of_int row) in
+    Printf.sprintf "[%s]" elements
+  ) mat in
+  Printf.sprintf "CONS_MN(%d %d [%s])" dim_m dim_n (String.concat ", " rows)
+
+let string_of_value v = match v with
+  | INT_V i -> string_of_int i
+  | FLT_V f -> string_of_float f
+  | BL_V b -> string_of_bool b
+  | NVEC_V v -> string_of_vector_int (List.length v) v
+  | FVEC_V v -> string_of_vector_fl (List.length v) v
+  | NMAT_V m -> 
+      let dim_m = List.length m in
+      let dim_n = if dim_m > 0 then List.length (List.hd m) else 0 in
+      string_of_matrix_int dim_m dim_n m
+  | FMAT_V m ->
+      let dim_m = List.length m in
+      let dim_n = if dim_m > 0 then List.length (List.hd m) else 0 in
+      string_of_matrix_fl dim_m dim_n m
+
+
+let string_of_binop op =
+  match op with
+  | Add -> "+"
+  | Sub -> "-"
+  | Mul -> "*"
+  | Div -> "/"
+  | Modulo -> "%"
+  | And -> "and"
+  | Or -> "or"
+  | Eq -> "="
+  | Neq -> "!="
+  | Gt -> ">"
+  | Lt -> "<"
+  | Geq -> ">="
+  | Leq -> "<="
+  | Dot_Prod -> "dot_prod"
+  | Angle -> "angle"
+  | Add_Vec -> "add_v"
+  | Scal_Vec -> "scal_v"
+  | Add_Mat -> "add_m"
+  | Scal_Mat -> "scal_m"
+  | Mat_Mul_Mat -> "mat_mul"
+
+(* Convert unary operator to string *)
+let string_of_unop op =
+  match op with
+  | Not -> "not"
+  | Neg -> "-"
+  | Mag_v -> "mag_v"
+  | Dim -> "dim"
+  | Transp -> "transp"
+  | Det -> "det"
+  | Inv -> "inv"
+
+let rec string_of_exp e = match e with
+  | IDF s -> s
+  | VAL v -> string_of_value v
+  | BIN_OP (op, e1, e2) ->
+      "(" ^ string_of_exp e1 ^ " " ^ string_of_binop op ^ " " ^ string_of_exp e2 ^ ")"
+  | UN_OP (op, e) ->
+      "(" ^ string_of_unop op ^ " " ^ string_of_exp e ^ ")"
+  | COND (e1, e2, e3) ->
+      "if " ^ string_of_exp e1 ^ " then " ^ string_of_exp e2 ^ " else " ^ string_of_exp e3
+  | Input None -> "input()"
+  | Input (Some s) -> "input(\"" ^ s ^ "\")"
+
+(* For converting statements into strings *)
+let rec string_of_stmt = function
+  | Assign (_, name, expr) ->
+      name ^ " := " ^ string_of_exp expr
+  | Ifte (cond, then_branch, Some else_branch) ->
+      "if " ^ string_of_exp cond ^ " then " ^ string_of_stmt then_branch ^ " else " ^ string_of_stmt else_branch
+  | Ifte (cond, then_branch, None) ->
+      "if " ^ string_of_exp cond ^ " then " ^ string_of_stmt then_branch
+  | While (cond, body) ->
+      "while " ^ string_of_exp cond ^ " do " ^ string_of_stmt body
+  | For (init, cond, update, body) ->
+      "for (" ^ string_of_stmt init ^ "; " ^ string_of_exp cond ^ "; " ^ string_of_stmt update ^ ") do " ^ string_of_stmt body
+  | Print expr ->
+      "print " ^ string_of_exp expr
+  | Return expr ->
+      "return " ^ string_of_exp expr
+  | _ -> "unknown_stmt"
+
+(* Converts a list of statements (the program) to string *)
+let string_of_program stmts =
+  String.concat "\n" (List.map string_of_stmt stmts)

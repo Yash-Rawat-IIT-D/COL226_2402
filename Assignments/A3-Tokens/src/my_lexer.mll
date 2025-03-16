@@ -172,6 +172,8 @@ rule token = parse
 	(* Handling Control and Branch Tokens *)
 	| ":=" { ASSIGN }
 	| ';' {SEMICOLON}
+	| ":" {COLON}
+	| "?" {QMARK}
 	| ',' {COMMA}
 	(* Handling Comments (Ignored) *)
 	| comm_reg { token lexbuf }	

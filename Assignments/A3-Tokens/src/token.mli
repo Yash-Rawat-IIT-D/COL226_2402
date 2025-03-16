@@ -46,7 +46,7 @@ type token =
 
 	| ASSIGN | IF | THEN |  ELSE | ELSE_IF | WHILE | FOR | RETURN | BREAK | CONTINUE
 
-	| SEMICOLON | COMMA 
+	| SEMICOLON | COMMA | COLON | QMARK
 
 	(* Handling EOF *)
 

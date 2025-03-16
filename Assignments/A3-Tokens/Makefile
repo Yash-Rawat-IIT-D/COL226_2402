@@ -1,51 +1,81 @@
-LEXER = src/my_lexer
-PARSER = src/my_parser
-TOKEN = src/token
-AST = src/my_ast
-TYPE_CHECK = src/type_check
+# Directories
+SRC = src
+BUILD = build
 
-EXEC = my_parser_test
+# File Paths
+LEXER = $(SRC)/my_lexer
+TOKEN = $(SRC)/token
+AST = $(SRC)/my_ast
+PARSER = $(SRC)/my_parser
+ENV = $(SRC)/env
+TYPE_CHECK = $(SRC)/type_check
+MAIN_LEX = $(SRC)/main_lex
+MAIN_PARSER = $(SRC)/main_parser
 
-all: $(EXEC)
+# Output Files
+TEST_LEXER = $(BUILD)/test_lexer
+TEST_PARSER = $(BUILD)/test_parser
 
-# Compile the token interface
-$(TOKEN).cmi: $(TOKEN).mli
-	ocamlc -c -I src $<
+# Build All
+all: $(TEST_LEXER) $(TEST_PARSER)
 
-# Generate parser code from .mly file
-$(PARSER).ml $(PARSER).mli: $(PARSER).mly
+# Create build directory if it doesn't exist
+$(BUILD):
+	mkdir -p $(BUILD)
+
+# Compile the token interface into src directory
+src/token.cmi: $(TOKEN).mli
+	ocamlc -c -I $(SRC) $<
+
+# Generate lexer code from .mll file into src directory
+src/my_lexer.ml: $(LEXER).mll src/token.cmi
+	ocamllex -o $@ $<
+
+# Compile the lexer into src directory
+src/my_lexer.cmo: src/my_lexer.ml src/token.cmi
+	ocamlc -c -I $(SRC) $<
+
+# Build test_lexer into build directory
+$(TEST_LEXER): src/my_lexer.cmo $(MAIN_LEX).ml
+	@echo "Compiling test_lexer..."
+	ocamlc -o $@ -I $(SRC) $^
+	@echo "✅ Test lexer compiled!"
+
+# Compile AST into src directory (depends on token)
+src/my_ast.cmo: $(AST).ml src/token.cmi
+	ocamlc -c -I $(SRC) $<
+
+# Compile environment into src directory (depends on AST)
+src/env.cmo: $(ENV).ml src/my_ast.cmo src/token.cmi
+	ocamlc -c -I $(SRC) $<
+
+# Compile type checker into src directory (depends on AST + env)
+src/type_check.cmo: $(TYPE_CHECK).ml src/my_ast.cmo src/env.cmo src/token.cmi
+	ocamlc -c -I $(SRC) $<
+
+# Generate parser code from .mly file into src directory
+src/my_parser.ml src/my_parser.mli: $(PARSER).mly
 	ocamlyacc $<
 
-# Generate lexer code from .mll file
-$(LEXER).ml: $(LEXER).mll $(TOKEN).cmi
-	ocamllex $<
+# Compile parser interface into src directory
+src/my_parser.cmi: src/my_parser.mli src/my_ast.cmo
+	ocamlc -c -I $(SRC) $<
 
-# Compile the AST file
-$(AST).cmo: $(AST).ml $(TOKEN).cmi
-	ocamlc -c -I src $<
+# Compile parser into src directory (depends on AST + token)
+src/my_parser.cmo: src/my_parser.ml src/my_ast.cmo src/token.cmi src/my_parser.cmi
+	ocamlc -c -I $(SRC) $<
 
-# Compile the lexer (make sure it knows about the token module)
-$(LEXER).cmo: $(LEXER).ml $(TOKEN).cmi
-	ocamlc -c -I src $<
+# Build test_parser into build directory (linking order matters!)
+$(TEST_PARSER): src/my_lexer.cmo src/my_parser.cmo src/my_ast.cmo src/env.cmo src/type_check.cmo $(MAIN_PARSER).ml
+	@echo "Compiling test_parser..."
+	ocamlc -o $@ -I $(SRC) $^
+	@echo "✅ Test parser compiled!"
 
-# Compile the parser
-$(PARSER).cmo: $(PARSER).ml $(TOKEN).cmi $(AST).cmo
-	ocamlc -c -I src $<
-
-# Compile the type checker
-$(TYPE_CHECK).cmo: $(TYPE_CHECK).ml $(AST).cmi $(TOKEN).cmi
-	ocamlc -c -I src $<
-
-# Link everything together into a single binary (for testing parser)
-$(EXEC): $(LEXER).cmo $(PARSER).cmo $(AST).cmo $(TYPE_CHECK).cmo
-	ocamlc -o $(EXEC) $^
-
-# Test compilation only
-test-grammar:
-	@echo "Checking if grammar compiles..."
-	@ocamlyacc $(PARSER).mly && echo "✅ Parser compiled successfully!" || echo "❌ Parser compilation failed!"
-
+# Clean everything in src and build directories
 clean:
-	rm -f src/*.cmo src/*.cmi src/*.o src/my_lexer.ml src/my_parser.ml src/my_parser.mli $(EXEC)
+	rm -rf $(BUILD)/*
+	rm -f src/*.cmi src/*.cmo src/*.o
+	rm -f src/my_lexer.ml src/my_parser.ml src/my_parser.mli
+	@echo "✅ Cleaned up src and build directories!"
 
-.PHONY: all clean test-grammar
+.PHONY: all clean

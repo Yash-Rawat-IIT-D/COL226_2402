@@ -89,6 +89,8 @@ let print_token (tok : token) = match tok with
   | BREAK -> print_endline "BREAK"
   | CONTINUE -> print_endline "CONTINUE"
   | SEMICOLON -> print_endline "SEMICOLON"
+  | COLON -> print_endline "COLON"
+  | QMARK -> print_endline "QUESTION_MARK"
   | COMMA -> print_endline "COMMA"
   | RETURN -> print_endline "RETURN"
   | _ -> print_endline "Unrecognised Token"

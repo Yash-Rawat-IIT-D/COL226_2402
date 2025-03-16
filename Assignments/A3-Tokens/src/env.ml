@@ -80,9 +80,10 @@ let print_env env =
          | T_FLOAT -> "FLOAT"
          | T_BOOL -> "BOOL"
          | T_VEC_N -> "VECTOR_N"
-         | T_FLOAT_N -> "VECTOR_F"
+         | T_VEC_F -> "VECTOR_F"
          | T_MAT_N -> "MATRIX_N"
          | T_MAT_F -> "MATRIX_F"
+         | T_INP -> "INPUT"
         )
         (match value with
          | INT_V i -> string_of_int i
