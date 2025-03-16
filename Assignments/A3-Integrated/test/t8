@@ -1,0 +1,31 @@
+int x := 5;
+int y := 10;
+matrix_n mat := 2,2 
+                [[1, 2], [3, 4]];
+
+if (x < y) {
+    Print(x);
+} else {
+    Print(y) ;
+}
+
+int i := 0;
+while (i < 5) {
+    Print i;
+    i := i + 1;
+}
+
+for (int j := 0; j < 3; j := j + 1) {
+    Print (j);
+}
+
+int a := 0;
+int b := 1;
+
+if (det_m(mat) != 0) {
+    Print (b);
+} else {
+    Print (a);
+}
+
+return x + y;

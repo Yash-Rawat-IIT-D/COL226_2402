@@ -1,0 +1,21 @@
+// Addition, scalar multiplication, dot product and dimension of vectors
+
+vector_n v1 := 3 [1, 2, 3]; 
+vector_n v2 := 3 [4, 5, 6]; 
+
+vector_n v_add := add_v(v1, v2);  // Expected: [5, 7, 9]
+vector_n v_scal := scal_v(2, v1); // Expected: [2, 4, 6]
+int v_dot := dot_v(v1, v2);       // Expected: 1*4 + 2*5 + 3*6 = 32
+int v_dim := dim_v(v1);           // Expected: 3
+
+Print(v_add); Print(v_scal); Print(v_dot); Print(v_dim);
+
+vector_f u1 := 3 [1.0, 2.5, -3.0];
+vector_f u2 := 3 [-1.0, 4.5, 2.0];
+
+vector_f u_add := add_v(u1, u2);   // Expected: [0.0, 7.0, -1.0]
+vector_f u_scal := scal_v(0.5, u1); // Expected: [0.5, 1.25, -1.5]
+float u_dot := dot_v(u1, u2);      // Expected: (1.0*-1.0) + (2.5*4.5) + (-3.0*2.0) = -1.0 + 11.25 - 6.0 = 4.25
+float u_mag := mag_v(u1);          // Expected: sqrt(1.0² + 2.5² + (-3.0)²) = sqrt(1.0 + 6.25 + 9.0) = sqrt(16.25)
+
+Print(u_add); Print(u_scal); Print(u_dot); Print(u_mag);

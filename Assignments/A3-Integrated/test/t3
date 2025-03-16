@@ -1,0 +1,41 @@
+// How a Sample Program could look like in our language
+// This is a sample program that uses almost all the features of our language
+
+int a := 10;
+float b := 3.14;
+bool flag := true;
+
+vector_n v1 := 3 
+               [1, 2, 3];
+vector_f v2 := 3 
+               [1.1, 2.2, 3.3];
+
+matrix_n m1 := 2, 3 
+               [[1, 2, 3], [4, 5, 6]];
+matrix_f m2 := 3, 2 
+               [[1.5, 2.5], [3.5, 4.5], [5.5, 6.5]];
+
+if (a > 5 and flag) {
+    b := b * 2.0;
+    Print(b);
+} else {
+    a := a - 1;
+    Print(a);
+}
+
+while (a > 0) {
+    a := a - 1;
+    Print(a);
+}
+
+for (i := 0; i < 5; i := i + 1) {
+    v1 := add_v(v1, 3 
+                    [1, 1, 1]);
+    Print(v1);
+}
+
+m1 := add_m(m1, 2, 3 
+                [[1, 1, 1], [1, 1, 1]]);
+Print(m1);
+
+return 0;
