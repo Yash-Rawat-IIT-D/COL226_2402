@@ -1,0 +1,4 @@
+int x := 5;
+int y := 10;
+int z := x > y ? x + 5 : y > 15 ? y - 5 : x * y;
+Print(z);

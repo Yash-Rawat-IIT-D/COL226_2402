@@ -23,6 +23,7 @@
 	| "or" -> OR
 	| "abs" -> ABS
 	| "mod" -> MODULO
+	| "inv" -> INV
 	| "add_v" -> ADD_VEC
 	| "scal_v" -> SCAL_VEC
 	| "dot_v" -> DOT_PROD

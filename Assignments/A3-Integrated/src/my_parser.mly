@@ -52,6 +52,8 @@
 %left OR
 %left AND
 
+%right QMARK COLON 
+
 // Comparison operations higher than logical operators 
 %left EQ NEQ LT GT LE GE
 
@@ -62,8 +64,7 @@
 %left MUL DIV MODULO SCAL_VEC SCAL_MAT MAT_MUL_MAT DOT_PROD ANGLE_VEC
 
 // Unary operations have the highest precedence 
-%right NOT NEG MAG_VEC DIM TRP_MAT DET INV
-%right QMARK COLON 
+%right NOT NEG MAG_VEC DIM_VEC TRP_MAT DET_MAT INV
 
 %nonassoc THEN
 %nonassoc ELSE_IF
@@ -179,10 +180,19 @@ expr:
   | expr GT expr                { BIN_OP (Gt, $1, $3) }
   | expr LE expr                { BIN_OP (Leq, $1, $3) }
   | expr GE expr                { BIN_OP (Geq, $1, $3) }
+  | expr SCAL_VEC expr           { BIN_OP (Scal_Vec, $1, $3) }
+  | expr SCAL_MAT expr           { BIN_OP (Scal_Mat, $1, $3) }
+  | expr ADD_VEC expr            { BIN_OP (Add_Vec, $1, $3) }
+  | expr ADD_MAT expr            { BIN_OP (Add_Mat, $1, $3) }
+  | expr MAT_MUL_MAT expr        { BIN_OP (Mat_Mul_Mat, $1, $3) }
+  | expr DOT_PROD expr           { BIN_OP (Dot_Prod, $1, $3) }
+  | expr ANGLE_VEC expr          { BIN_OP (Angle, $1, $3) }
+  | MAG_VEC expr                 { UN_OP (Mag_v, $2) }
+  | DIM_VEC expr                 { UN_OP (Dim, $2) }
   | NOT expr                    { UN_OP (Not, $2) }
   | NEG expr                    { UN_OP (Neg, $2) }
   | TRP_MAT expr                { UN_OP (Trp_Mat, $2) }
-  | DET expr                    { UN_OP (Det, $2) }
+  | DET_MAT expr                    { UN_OP (Det, $2) }
   | INV expr                    { UN_OP (Inv, $2) }
   | INPUT LPAREN RPAREN         { Input None }
   | INPUT LPAREN FNAME RPAREN   { Input (Some $3) }

@@ -1,0 +1,3 @@
+int a := 5 * (10 + 2) / 2 - 3;
+int b := a * a mod 7;
+Print(a);

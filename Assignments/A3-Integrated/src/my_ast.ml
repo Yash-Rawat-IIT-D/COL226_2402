@@ -198,7 +198,7 @@ let compatible_types t1 t2 =
 (* Convert float vector to string *)
 let string_of_vector_fl dim vec =
   let elements = String.concat ", " (List.map string_of_float vec) in
-  Printf.sprintf "CONS_VF(%d [%s])" dim elements
+  Printf.sprintf "%d [%s]" dim elements
 
 (* Convert float matrix to string *)
 let string_of_matrix_fl dim_m dim_n mat =
@@ -206,12 +206,12 @@ let string_of_matrix_fl dim_m dim_n mat =
     let elements = String.concat ", " (List.map string_of_float row) in
     Printf.sprintf "[%s]" elements
   ) mat in
-  Printf.sprintf "CONS_MF(%d %d [%s])" dim_m dim_n (String.concat ", " rows)
+  Printf.sprintf "%d %d [%s]" dim_m dim_n (String.concat ", " rows)
 
 (* Convert int vector to string *)
 let string_of_vector_int dim vec =
   let elements = String.concat ", " (List.map string_of_int vec) in
-  Printf.sprintf "CONS_VN(%d [%s])" dim elements
+  Printf.sprintf "%d [%s]" dim elements
 
 (* Convert int matrix to string *)
 let string_of_matrix_int dim_m dim_n mat =
@@ -219,7 +219,7 @@ let string_of_matrix_int dim_m dim_n mat =
     let elements = String.concat ", " (List.map string_of_int row) in
     Printf.sprintf "[%s]" elements
   ) mat in
-  Printf.sprintf "CONS_MN(%d %d [%s])" dim_m dim_n (String.concat ", " rows)
+  Printf.sprintf "%d %d [%s]" dim_m dim_n (String.concat ", " rows)
 
 let string_of_value v = match v with
   | INT_V i -> string_of_int i
@@ -237,14 +237,14 @@ let string_of_value v = match v with
       string_of_matrix_fl dim_m dim_n m
   | FILE_V s -> "INPUT(" ^ s ^ ")"
 
-let string_of_typ t = match t with 
+let string_of_type t = match t with 
 | T_INT -> "integer"
 | T_FLOAT -> "float"
 | T_BOOL -> "boolean"
-| T_VEC_N -> "integer vector"
-| T_VEC_F -> "float vector"
-| T_MAT_N -> "integer matrix"
-| T_MAT_F -> "float matrix"
+| T_VEC_N -> "integer_vector"
+| T_VEC_F -> "float_vector"
+| T_MAT_N -> "integer_matrix"
+| T_MAT_F -> "float_matrix"
 | T_INP -> "input"
 
 let string_of_etype et = match et with
@@ -305,8 +305,11 @@ let rec string_of_exp e = match e with
 
 (* For converting statements into strings *)
 let rec string_of_stmt = function
-  | Assign (_, name, expr) ->
-      name ^ " := " ^ string_of_exp expr
+  | Assign (typ_opt, name, expr) ->
+    ( match typ_opt with
+        | Some t -> (string_of_type t) ^ " " ^ name ^ " := " ^ string_of_exp expr
+        | None -> name ^ " := " ^ string_of_exp expr
+    )
   | Ifte (cond, then_branch, Some else_branch) ->
       "if " ^ string_of_exp cond ^ " then " ^ string_of_stmt then_branch ^ " else " ^ string_of_stmt else_branch
   | Ifte (cond, then_branch, None) ->
@@ -316,7 +319,7 @@ let rec string_of_stmt = function
   | For (init, cond, update, body) ->
       "for (" ^ string_of_stmt init ^ "; " ^ string_of_exp cond ^ "; " ^ string_of_stmt update ^ ") do " ^ string_of_stmt body
   | Print expr ->
-      "print " ^ string_of_exp expr
+      "print" ^ "(" ^ (string_of_exp expr) ^ ")"
   | Return expr ->
       "return " ^ string_of_exp expr
   | Block stmts -> 

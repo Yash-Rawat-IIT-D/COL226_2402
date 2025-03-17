@@ -69,7 +69,7 @@ test-lexer: $(BUILD_DIR)/lexer_test
 
 # Run parser tests
 test-parser: $(BUILD_DIR)/parser_test
-	@for t in test/t*; do \
+	@for t in test/p*; do \
 		echo "Testing parser on $$t"; \
 		$(BUILD_DIR)/parser_test $$t > $(OUTPUT_DIR)/parser_`basename $$t`.out; \
 	done

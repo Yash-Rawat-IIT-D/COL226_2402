@@ -450,6 +450,7 @@ let rec type_of_exp env = function
         else raise (Type_Error "Both branches of conditional must have the same type")
 
   | Input _ -> E_INP
+  
   | _ -> raise(Undefined_Expression("Given expression is undefined"))
 
 (* Statement evaluation function *)
