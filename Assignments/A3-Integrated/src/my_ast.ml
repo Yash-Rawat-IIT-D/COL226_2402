@@ -13,10 +13,15 @@ type matrix_int = vector_int list
 exception Syntax_Error of string  
 exception Type_Mismatch of string
 exception Dimension_Mismatch of string
-exception InvalidOperation of string
 exception UndefinedVariable of string
-exception InvalidCondition of string
+exception Undefined_Expression of string
 
+(* Exceptions accessed by prog using my_ast.ml*)
+exception Var_Not_Found of string
+exception Empty_Env of string  
+exception Type_Error of string
+exception Undefined_Var of string
+exception Division_by_zero of string
 
 (*===================================================================================*)
                           (* Vector and Matrix Helper *)
@@ -71,7 +76,7 @@ type value =
   | INT_V of int | FLT_V of float | BL_V of bool
   | NVEC_V of int list | FVEC_V of float list 
   | NMAT_V of int list list | FMAT_V of float list list 
-  | STR_V of string
+  | FILE_V of string
 
 (* For handling type of assignments, and runtime checks for type consistency *)
 (* Eg : Compatibility of dimensions and types for matrix multiplication *)
@@ -167,7 +172,7 @@ let print_value = function
       let rows = List.length m in
       let cols = if rows > 0 then List.length (List.hd m) else 0 in
       print_matrix_fl rows cols m
-  | STR_V s -> Printf.printf "%s"s 
+  | FILE_V s -> Printf.printf "%s"s 
 
 let convert_to_etype = function
   | T_INT -> E_INT
@@ -190,7 +195,6 @@ let compatible_types t1 t2 =
   | E_MAT_F (r1, c1), E_MAT_F (r2, c2) -> 
       (r1 = 0 && c1 = 0) || (r2 = 0 && c2 = 0) || (r1 = r2 && c1 = c2)
   | _ -> false
-  
 (* Convert float vector to string *)
 let string_of_vector_fl dim vec =
   let elements = String.concat ", " (List.map string_of_float vec) in
@@ -231,8 +235,27 @@ let string_of_value v = match v with
       let dim_m = List.length m in
       let dim_n = if dim_m > 0 then List.length (List.hd m) else 0 in
       string_of_matrix_fl dim_m dim_n m
-  | STR_V s -> "INPUT(" ^ s ^ ")"
+  | FILE_V s -> "INPUT(" ^ s ^ ")"
 
+let string_of_typ t = match t with 
+| T_INT -> "integer"
+| T_FLOAT -> "float"
+| T_BOOL -> "boolean"
+| T_VEC_N -> "integer vector"
+| T_VEC_F -> "float vector"
+| T_MAT_N -> "integer matrix"
+| T_MAT_F -> "float matrix"
+| T_INP -> "input"
+
+let string_of_etype et = match et with
+| E_INT -> "integer"
+| E_FLOAT -> "float"
+| E_BOOL -> "boolean"
+| E_VEC_N dim -> "integer vector[" ^ string_of_int dim ^ "]"
+| E_VEC_F dim -> "float vector[" ^ string_of_int dim ^ "]"
+| E_MAT_N (rows, cols) -> "integer matrix[" ^ string_of_int rows ^ "," ^ string_of_int cols ^ "]"
+| E_MAT_F (rows, cols) -> "float matrix[" ^ string_of_int rows ^ "," ^ string_of_int cols ^ "]"
+| E_INP -> "input"
 
 let string_of_binop op =
   match op with
@@ -296,8 +319,13 @@ let rec string_of_stmt = function
       "print " ^ string_of_exp expr
   | Return expr ->
       "return " ^ string_of_exp expr
-  | _ -> "unknown_stmt"
-
+  | Block stmts -> 
+    "{\n" ^ 
+    (String.concat "\n" (List.map string_of_stmt stmts)) ^ 
+    "\n}"
+  | Break -> "break;"
+  | Continue -> "continue;"
+  
 (* Converts a list of statements (the program) to string *)
 let string_of_program stmts =
   String.concat "\n" (List.map string_of_stmt stmts)

@@ -13,8 +13,8 @@ OUTPUT_DIR = output
 # Flags
 OCAMLFLAGS = -I $(SRC_DIR)
 
-# Default target
-all: directories $(BUILD_DIR)/lexer_test
+# Default target - build both lexer_test and parser_test
+all: directories $(BUILD_DIR)/lexer_test $(BUILD_DIR)/parser_test
 
 # Create necessary directories
 directories:
@@ -48,24 +48,34 @@ $(SRC_DIR)/my_lexer.cmo: $(SRC_DIR)/my_lexer.ml $(SRC_DIR)/my_parser.cmi $(SRC_D
 $(SRC_DIR)/main_lexer.cmo: $(SRC_DIR)/main_lexer.ml $(SRC_DIR)/my_lexer.cmo
 	$(OCAMLC) $(OCAMLFLAGS) -c $< -o $(SRC_DIR)/main_lexer.cmo
 
-# Build lexer test executable (final target in build directory)
-$(BUILD_DIR)/lexer_test: $(SRC_DIR)/my_ast.cmo $(SRC_DIR)/my_parser.cmo $(SRC_DIR)/my_lexer.cmo $(SRC_DIR)/main_lexer.cmo
-	$(OCAMLC) $(OCAMLFLAGS) -o $@ $^
-
-# For future: Compile main_parser (for parser testing)
+# Compile main_parser (for parser testing)
 $(SRC_DIR)/main_parser.cmo: $(SRC_DIR)/main_parser.ml $(SRC_DIR)/my_parser.cmo $(SRC_DIR)/my_lexer.cmo
 	$(OCAMLC) $(OCAMLFLAGS) -c $< -o $(SRC_DIR)/main_parser.cmo
 
-# For future: Build parser test executable
+# Build lexer test executable
+$(BUILD_DIR)/lexer_test: $(SRC_DIR)/my_ast.cmo $(SRC_DIR)/my_parser.cmo $(SRC_DIR)/my_lexer.cmo $(SRC_DIR)/main_lexer.cmo
+	$(OCAMLC) $(OCAMLFLAGS) -o $@ $^
+
+# Build parser test executable
 $(BUILD_DIR)/parser_test: $(SRC_DIR)/my_ast.cmo $(SRC_DIR)/my_parser.cmo $(SRC_DIR)/my_lexer.cmo $(SRC_DIR)/main_parser.cmo
 	$(OCAMLC) $(OCAMLFLAGS) -o $@ $^
 
-# Run tests correctly by passing the file as a command-line argument
-test: $(BUILD_DIR)/lexer_test
+# Run lexer tests
+test-lexer: $(BUILD_DIR)/lexer_test
 	@for t in test/t*; do \
-		echo "Testing $$t"; \
-		$(BUILD_DIR)/lexer_test $$t > $(OUTPUT_DIR)/`basename $$t`.out; \
+		echo "Testing lexer on $$t"; \
+		$(BUILD_DIR)/lexer_test $$t > $(OUTPUT_DIR)/lexer_`basename $$t`.out; \
 	done
+
+# Run parser tests
+test-parser: $(BUILD_DIR)/parser_test
+	@for t in test/t*; do \
+		echo "Testing parser on $$t"; \
+		$(BUILD_DIR)/parser_test $$t > $(OUTPUT_DIR)/parser_`basename $$t`.out; \
+	done
+
+# Run all tests
+test: test-lexer test-parser
 
 # Clean target to remove generated files
 clean:
@@ -73,4 +83,4 @@ clean:
 	rm -f $(BUILD_DIR)/* $(OUTPUT_DIR)/*
 
 # Phony targets
-.PHONY: all clean test directories
+.PHONY: all clean test test-lexer test-parser directories

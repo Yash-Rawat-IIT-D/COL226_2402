@@ -11,39 +11,39 @@
     | "Print" -> PRINT
     | "true" -> CONS_B true
     | "false" -> CONS_B false
-		| "int" -> INT_T
-		| "float" -> FLOAT_T
-		| "bool" -> BOOL_T
-		| "vector_n" -> VECTOR_N_T
-		| "vector_f" -> VECTOR_F_T
-		| "matrix_n" -> MATRIX_N_T
-		| "matrix_f" -> MATRIX_F_T
-		| "not" -> NOT
-		| "and" -> AND
-		| "or" -> OR
-		| "abs" -> ABS
-		| "mod" -> MODULO
-		| "add_v" -> ADD_VEC
-		| "scal_v" -> SCAL_VEC
-		| "dot_v" -> DOT_PROD
-		| "ang_v" -> ANGLE_VEC
-		| "mag_v" -> MAG_VEC
-		| "dim_v" -> DIM_VEC
-		| "add_m" -> ADD_MAT
-		| "scal_m" -> SCAL_MAT
-		| "mul_m" -> MAT_MUL_MAT
-		| "transp_m" -> TRP_MAT
-		| "det_m" -> DET_MAT
-		| "if" -> IF
-		| "then" -> THEN
-		| "else" -> ELSE
-		| "while" -> WHILE
-		| "for" -> FOR
-		| "elif" -> ELSE_IF 
-		| "break" -> BREAK
-		| "return" -> RETURN
-		| "continue" -> CONTINUE
-		| _ -> IDENT s
+	| "int" -> INT_T
+	| "float" -> FLOAT_T
+	| "bool" -> BOOL_T
+	| "vector_n" -> VECTOR_N_T
+	| "vector_f" -> VECTOR_F_T
+	| "matrix_n" -> MATRIX_N_T
+	| "matrix_f" -> MATRIX_F_T
+	| "not" -> NOT
+	| "and" -> AND
+	| "or" -> OR
+	| "abs" -> ABS
+	| "mod" -> MODULO
+	| "add_v" -> ADD_VEC
+	| "scal_v" -> SCAL_VEC
+	| "dot_v" -> DOT_PROD
+	| "ang_v" -> ANGLE_VEC
+	| "mag_v" -> MAG_VEC
+	| "dim_v" -> DIM_VEC
+	| "add_m" -> ADD_MAT
+	| "scal_m" -> SCAL_MAT
+	| "mul_m" -> MAT_MUL_MAT
+	| "transp_m" -> TRP_MAT
+	| "det_m" -> DET_MAT
+	| "if" -> IF
+	| "then" -> THEN
+	| "else" -> ELSE
+	| "while" -> WHILE
+	| "for" -> FOR
+	| "elif" -> ELSE_IF 
+	| "break" -> BREAK
+	| "return" -> RETURN
+	| "continue" -> CONTINUE
+	| _ -> IDENT s
 
 	(* Helper function to convert string to vector *)
 	(* Easy to split on , after removing the outer [ and ]*)

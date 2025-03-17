@@ -8,15 +8,9 @@
 (* prog.ml - Implements the type-checking and variable environment/scoping *)
 
 open My_ast
+open My_lexer
 
 (*===================================================================================*)
-
-exception Var_Not_Found of string
-exception Empty_Env of string  
-
-exception Type_Error of string
-exception Undefined_Var of string
-exception Division_by_zero of string
 
 (* We will be using stack based approach to simulate the scoping principle of variables *)
 
@@ -28,7 +22,7 @@ type environment = env_frame list
 (*===================================================================================*)
                     (* Handling Variable Type and Value Lookup *)
 (*===================================================================================*)
-let rec lookup_var v_name env = 
+let rec lookup_var v_name env =   
   match env with 
   | [] -> raise(Var_Not_Found("Variable Not Found : " ^ v_name))
   | eframe::xenv ->
@@ -98,12 +92,37 @@ let init_env () = [[]]
                         (* Type Checking and Eval_Expr Implementation *)
 (*===================================================================================*)
 
+
 let read_from_terminal () =
   (* Read from stdin and parse into appropriate value *)
   print_string "> ";
   flush stdout;
   let input_line = read_line () in
   input_line
+
+let pseudo_file_lex input_str typ_opt =
+  (* Create a lexing buffer from the input string *)
+  let lexbuf = Lexing.from_string input_str in
+  
+  (* Get the first token *)
+  let token = My_lexer.token lexbuf in
+  
+  (* Check if there's only one token (plus EOF) *)
+  let second_token = My_lexer.token lexbuf in
+  if second_token <> EOF then
+    raise (Type_Error "Invalid input format: expected a single value (Invalid Input format)")
+  else
+    (* Convert the token to the appropriate value based on the expected type *)
+    match token, typ_opt with
+    | CONS_N n, Some T_INT -> VAL (INT_V n)
+    | CONS_F f, Some T_FLOAT -> VAL (FLT_V f)
+    | CONS_B b, Some T_BOOL -> VAL (BL_V b)
+    | CONS_VN (dim, vec), Some T_VEC_N -> VAL (NVEC_V vec)
+    | CONS_VF (dim, vec), Some T_VEC_F -> VAL (FVEC_V vec)
+    | CONS_MN (rows, cols, mat), Some T_MAT_N -> VAL (NMAT_V mat)
+    | CONS_MF (rows, cols, mat), Some T_MAT_F -> VAL (FMAT_V mat)
+    | _, None -> raise (Type_Error "Type annotation required for input")
+    | _ -> raise (Type_Error ("Input doesn't match expected type"))
 
 let rec eval_expr env = function
   (* Base cases - values evaluate to themselves *)
@@ -177,83 +196,9 @@ let rec eval_expr env = function
   | Input fname_opt -> 
     (
       match fname_opt with 
-      | None -> VAL (STR_V "")
-      | Some fname -> VAL (STR_V fname)
+      | None -> VAL (FILE_V "")
+      | Some fname -> VAL (FILE_V fname)
     )
-
-(* Statement evaluation function *)
-let rec eval_stmt env = function
-  | Assign (typ_opt, id, expr) ->
-      let value = eval_expr env expr in
-      let expr_type = type_of_exp env expr in
-      let expected_type = match typ_opt with
-        | Some t -> convert_to_etype t  (* Convert from typ to etyp *)
-        | None -> expr_type
-      in
-      if compatible_types expr_type expected_type then
-        define_var id expected_type value env
-      else
-        raise (Type_Error ("Type mismatch in assignment to " ^ id))
-      
-  | Print expr ->
-      let value = eval_expr env expr in
-      print_value value;
-      env
-      
-  | Return expr ->
-      (* Store the return value for later use *)
-      let value = eval_expr env expr in
-      (* You might want to use a mutable reference or exception to handle returns *)
-      env
-      
-  | Break | Continue ->
-      (* These should be handled by control flow constructs *)
-      (* For now, just return the environment *)
-      env
-      
-  | Block stmts ->
-      let block_env = push_scope env in
-      let final_env = List.fold_left 
-        (fun env stmt -> eval_stmt env stmt) 
-        block_env stmts in
-      pop_scope final_env
-        
-  | Ifte (cond, then_stmt, else_opt) ->
-      let cond_val = eval_expr env cond in
-      match cond_val with
-      | BL_V true -> eval_stmt env then_stmt
-      | BL_V false -> 
-          (match else_opt with
-           | Some else_stmt -> eval_stmt env else_stmt
-           | None -> env)
-      | _ -> raise (Type_Error "Condition must evaluate to a boolean")
-      
-  | While (cond, body) ->
-      let rec loop env =
-        let cond_val = eval_expr env cond in
-        match cond_val with
-        | BL_V true -> 
-            let new_env = eval_stmt env body in
-            loop new_env
-        | BL_V false -> env
-        | _ -> raise (Type_Error "Condition must evaluate to a boolean")
-      in
-      loop env
-      
-  | For (init, cond, update, body) ->
-      let init_env = eval_stmt env init in
-      let rec loop env =
-        let cond_val = eval_expr env cond in
-        match cond_val with
-        | BL_V true -> 
-            let body_env = eval_stmt env body in
-            let update_env = eval_stmt body_env update in
-            loop update_env
-        | BL_V false -> env
-        | _ -> raise (Type_Error "Condition must evaluate to a boolean")
-      in
-      loop init_env
-
 (* Helper function to check type compatibility *)
 let rec type_of_exp env = function
   (* Base cases *)
@@ -268,6 +213,7 @@ let rec type_of_exp env = function
   | VAL (FMAT_V m) -> 
       let (rows, cols) = mat_dim m in
       E_MAT_F (rows, cols)
+  | VAL (FILE_V s) -> 
   | IDF v ->
     (
       try
@@ -504,22 +450,44 @@ let rec type_of_exp env = function
         else raise (Type_Error "Both branches of conditional must have the same type")
 
   | Input _ -> E_INP
+  | _ -> raise(Undefined_Expression("Given expression is undefined"))
 
-  let rec eval_stmt env = function
+(* Statement evaluation function *)
+let rec eval_stmt env = function
   | Assign (typ_opt, id, expr) ->
       let value = eval_expr env expr in
-      let expr_type = type_of_exp env expr in
-      let expected_type = match typ_opt with
-        | Some t -> convert_to_etype t
-        | None -> expr_type
-      in
-      if compatible_types expr_type expected_type then
-        define_var id expr_type value env
-      else
-        raise (Type_Error ("Type mismatch in assignment to " ^ id ^ 
-                          ": expected " ^ string_of_etype expected_type ^ 
-                          " but got " ^ string_of_etype expr_type))
-      
+      (match value with
+        | FILE_V s ->
+          ( let input_content = if s = "" then (print_string "> "; flush stdout; read_line()) 
+                                else  (let ch = open_in s in let content = input_line ch in close_in ch; content) in
+            let processed_val = pseudo_file_lex s typ_opt in
+            let expr_type = type_of_exp env processed_val in
+            let expected_type = match typ_opt with
+              | Some t -> convert_to_etype t
+              | None -> expr_type
+            in
+            if compatible_types expr_type expected_type then 
+              define_var id expr_type expected_type
+            else
+              raise (Type_Error ("Type mismatch in assignment to " ^ id ^ 
+                                ": expected " ^ string_of_etype expected_type ^ 
+                                " but got " ^ string_of_etype expr_type))    
+          )
+
+        | _ ->
+        ( let expr_type = type_of_exp env expr in
+          let expected_type = match typ_opt with
+            | Some t -> convert_to_etype t
+            | None -> expr_type
+          in
+          if compatible_types expr_type expected_type then
+            define_var id expr_type value env
+          else
+            raise (Type_Error ("Type mismatch in assignment to " ^ id ^ 
+                              ": expected " ^ string_of_etype expected_type ^ 
+                              " but got " ^ string_of_etype expr_type))
+        )
+      )
   | Print expr ->
       let value = eval_expr env expr in
       print_value value;
@@ -542,14 +510,15 @@ let rec type_of_exp env = function
         
   | Ifte (cond, then_stmt, else_opt) ->
       let cond_val = eval_expr env cond in
-      match cond_val with
-      | BL_V true -> eval_stmt env then_stmt
-      | BL_V false -> 
-          (match else_opt with
-           | Some else_stmt -> eval_stmt env else_stmt
-           | None -> env)
-      | _ -> raise (Type_Error "Condition must evaluate to a boolean")
-      
+     (  match cond_val with
+          | BL_V true -> eval_stmt env then_stmt
+          | BL_V false -> 
+              (match else_opt with
+              | Some else_stmt -> eval_stmt env else_stmt
+              | None -> env)
+          | _ -> raise (Type_Error "Condition must evaluate to a boolean")
+     )
+     
   | While (cond, body) ->
       let rec loop env =
         let cond_val = eval_expr env cond in
@@ -575,3 +544,14 @@ let rec type_of_exp env = function
         | _ -> raise (Type_Error "Condition must evaluate to a boolean")
       in
       loop init_env
+
+(* Evaluate a complete program *)
+let eval_prog prog =
+  let env = init_env () in
+  let rec eval_stmts env = function
+    | [] -> env
+    | stmt :: rest ->
+        let new_env = eval_stmt env stmt in
+        eval_stmts new_env rest
+  in
+  eval_stmts env prog
