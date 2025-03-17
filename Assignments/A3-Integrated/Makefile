@@ -60,11 +60,11 @@ $(SRC_DIR)/main_parser.cmo: $(SRC_DIR)/main_parser.ml $(SRC_DIR)/my_parser.cmo $
 $(BUILD_DIR)/parser_test: $(SRC_DIR)/my_ast.cmo $(SRC_DIR)/my_parser.cmo $(SRC_DIR)/my_lexer.cmo $(SRC_DIR)/main_parser.cmo
 	$(OCAMLC) $(OCAMLFLAGS) -o $@ $^
 
-# Run tests
+# Run tests correctly by passing the file as a command-line argument
 test: $(BUILD_DIR)/lexer_test
 	@for t in test/t*; do \
 		echo "Testing $$t"; \
-		$(BUILD_DIR)/lexer_test < $$t > $(OUTPUT_DIR)/`basename $$t`.out; \
+		$(BUILD_DIR)/lexer_test $$t > $(OUTPUT_DIR)/`basename $$t`.out; \
 	done
 
 # Clean target to remove generated files

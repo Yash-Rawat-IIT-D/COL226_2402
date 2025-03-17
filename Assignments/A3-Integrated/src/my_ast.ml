@@ -71,11 +71,18 @@ type value =
   | INT_V of int | FLT_V of float | BL_V of bool
   | NVEC_V of int list | FVEC_V of float list 
   | NMAT_V of int list list | FMAT_V of float list list 
+  | STR_V of string
 
 (* For handling type of assignments, and runtime checks for type consistency *)
 (* Eg : Compatibility of dimensions and types for matrix multiplication *)
 type typ = T_INT | T_FLOAT | T_BOOL
           | T_VEC_N | T_VEC_F | T_MAT_N | T_MAT_F | T_INP
+
+type etyp = 
+  | E_INT | E_FLOAT | E_BOOL
+  | E_VEC_N of int | E_VEC_F of int 
+  | E_MAT_N of int * int | E_MAT_F of int * int
+  | E_INP
 
 (* Majority operations of primary data types as supported by our PL fall in the \
    Category of Unary or binary operations , So to provide another abstract template for our 
@@ -124,6 +131,66 @@ type program = stmt list
                               (* Utility Functions *)
 (*===================================================================================*)
 
+let print_vector_fl dim vec =
+  let elements = String.concat ", " (List.map string_of_float vec) in
+  Printf.printf "CONS_VF(%d [%s])\n" dim elements
+
+let print_matrix_fl dim_m dim_n mat =
+      let rows = List.map (fun row -> 
+        let elements = String.concat ", " (List.map string_of_float row) in
+        Printf.sprintf "[%s]" elements
+      ) mat in
+      Printf.printf "CONS_MF(%d %d [%s])\n" (dim_m) (dim_n) (String.concat ", " rows) 
+
+let print_vector_int dim vec =
+  let elements = String.concat ", " (List.map string_of_int vec) in
+  Printf.printf "CONS_VN(%d [%s])\n" dim elements 
+
+let print_matrix_int dim_m dim_n mat =
+    let rows = List.map (fun row -> 
+      let elements = String.concat ", " (List.map string_of_int row) in
+      Printf.sprintf "[%s]" elements
+    ) mat in
+    Printf.printf "CONS_MN(%d %d [%s])\n" (dim_m) (dim_n) (String.concat ", " rows)
+
+let print_value = function
+  | INT_V i -> Printf.printf "%d\n" i
+  | FLT_V f -> Printf.printf "%f\n" f
+  | BL_V b -> Printf.printf "%b\n" b
+  | NVEC_V v -> print_vector_int (List.length v) v
+  | FVEC_V v -> print_vector_fl (List.length v) v
+  | NMAT_V m -> 
+      let rows = List.length m in
+      let cols = if rows > 0 then List.length (List.hd m) else 0 in
+      print_matrix_int rows cols m
+  | FMAT_V m -> 
+      let rows = List.length m in
+      let cols = if rows > 0 then List.length (List.hd m) else 0 in
+      print_matrix_fl rows cols m
+  | STR_V s -> Printf.printf "%s"s 
+
+let convert_to_etype = function
+  | T_INT -> E_INT
+  | T_FLOAT -> E_FLOAT
+  | T_BOOL -> E_BOOL
+  | T_VEC_N -> E_VEC_N 0
+  (* Default dimension, will be checked during assignment *)
+  | T_VEC_F -> E_VEC_F 0
+  | T_MAT_N -> E_MAT_N (0, 0)
+  | T_MAT_F -> E_MAT_F (0, 0)
+  | T_INP -> E_INP
+
+let compatible_types t1 t2 =
+  match t1, t2 with
+  | E_INT, E_INT | E_FLOAT, E_FLOAT | E_BOOL, E_BOOL -> true
+  | E_VEC_N d1, E_VEC_N d2 -> d1 = 0 || d2 = 0 || d1 = d2
+  | E_VEC_F d1, E_VEC_F d2 -> d1 = 0 || d2 = 0 || d1 = d2
+  | E_MAT_N (r1, c1), E_MAT_N (r2, c2) -> 
+      (r1 = 0 && c1 = 0) || (r2 = 0 && c2 = 0) || (r1 = r2 && c1 = c2)
+  | E_MAT_F (r1, c1), E_MAT_F (r2, c2) -> 
+      (r1 = 0 && c1 = 0) || (r2 = 0 && c2 = 0) || (r1 = r2 && c1 = c2)
+  | _ -> false
+  
 (* Convert float vector to string *)
 let string_of_vector_fl dim vec =
   let elements = String.concat ", " (List.map string_of_float vec) in
@@ -164,6 +231,7 @@ let string_of_value v = match v with
       let dim_m = List.length m in
       let dim_n = if dim_m > 0 then List.length (List.hd m) else 0 in
       string_of_matrix_fl dim_m dim_n m
+  | STR_V s -> "INPUT(" ^ s ^ ")"
 
 
 let string_of_binop op =
@@ -200,7 +268,7 @@ let string_of_unop op =
   | Det -> "det"
   | Inv -> "inv"
 
-  let rec string_of_exp e = match e with
+let rec string_of_exp e = match e with
   | IDF s -> s
   | VAL v -> string_of_value v
   | BIN_OP (op, e1, e2) ->

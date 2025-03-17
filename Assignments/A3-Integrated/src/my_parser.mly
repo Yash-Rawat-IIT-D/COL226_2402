@@ -155,6 +155,8 @@ constant:
       else
           VAL (FMAT_V m)
   }
+  | inv_vec { $1 } 
+  | inv_mat { $1 } /* These shall raise the appropriate error */
 ;
 
 /*===================================================================================*/
@@ -196,7 +198,18 @@ stmt:
   | INT_T IDENT ASSIGN expr SEMICOLON               { Assign (Some T_INT, $2, $4) }
   | FLOAT_T IDENT ASSIGN expr SEMICOLON             { Assign (Some T_FLOAT, $2, $4) }
   | BOOL_T IDENT ASSIGN expr SEMICOLON              { Assign (Some T_BOOL, $2, $4) }
-  | PRINT LPAREN expr RPAREN SEMICOLON              { Print $3 }
+  | VECTOR_N_T IDENT ASSIGN expr SEMICOLON          { Assign (Some T_VEC_N, $2, $4) }
+	| VECTOR_F_T IDENT ASSIGN expr SEMICOLON          { Assign (Some T_VEC_F, $2, $4) }
+	| MATRIX_N_T IDENT ASSIGN expr SEMICOLON          { Assign (Some T_MAT_N, $2, $4) }
+	| MATRIX_F_T IDENT ASSIGN expr SEMICOLON          { Assign (Some T_MAT_F, $2, $4) }
+  // For and While Loops 
+	| WHILE expr stmt 																{ While ($2, $3) }
+	| FOR stmt SEMICOLON expr SEMICOLON stmt stmt 		{ For ($2, $4, $6, $7) }
+	| IF expr THEN stmt                      				  { Ifte ($2, $4, None) }
+	| IF expr THEN stmt ELSE stmt                     { Ifte ($2, $4, Some $6) }
+	// Normal Assignment
+	| IDENT ASSIGN expr SEMICOLON           				  { Assign (None, $1, $3) }										
+	| PRINT LPAREN expr RPAREN SEMICOLON              { Print $3 }
   | RETURN expr SEMICOLON                           { Return $2 }
   | BREAK SEMICOLON                                 { Break }
   | CONTINUE SEMICOLON                              { Continue }
