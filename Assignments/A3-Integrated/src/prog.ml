@@ -14,7 +14,7 @@ open My_lexer
 
 (* We will be using stack based approach to simulate the scoping principle of variables *)
 
-type env_frame = (string * typ * value) 
+type env_frame = (string * etyp * value) list 
 type environment = env_frame list
 
 (*===================================================================================*)
@@ -22,56 +22,47 @@ type environment = env_frame list
 (*===================================================================================*)
                     (* Handling Variable Type and Value Lookup *)
 (*===================================================================================*)
+
+(* Variable Lookup *)
 let rec lookup_var v_name env =   
   match env with 
   | [] -> raise(Var_Not_Found("Variable Not Found : " ^ v_name))
-  | eframe::xenv ->
+  | frame::rest_env ->
     (
-      match List.find_opt (fun (v,_,_) -> v = v_name) eframe with 
-      | Some (_,v_typ,v_val) -> (v_typ,v_val)
-      | None -> lookup_var v_name xenv  (* Looks in older / Outer Scopes *)
+      match List.find_opt (fun (name, _, _) -> name = v_name) frame with 
+      | Some (_, v_typ, v_val) -> (v_typ, v_val)
+      | None -> lookup_var v_name rest_env  (* Look in outer scopes *)
     )
 
-(*===================================================================================*)
-                (* Updating or adding new variable to current scope *)
-(*===================================================================================*)    
+(* Check if variable exists in the current scope only *)
+let var_in_frame v_name env = 
+  match env with
+  | [] -> false
+  | frame::_ -> List.exists (fun (name, _, _) -> name = v_name) frame
 
+(* Define or update variable in current scope *)
 let define_var v_name v_typ v_val env = 
   match env with
-  | [] -> raise(Empty_Env("Empty Environment : No Scope"))
-  | eframe::xenv ->
-    (
-      match List.find_opt (fun (v, _, _) -> v = v_name) eframe with
-      | Some (_, old_typ, _) ->
-          if old_typ = v_typ then
-            (* Update with same type *)
-            let new_frame = 
-              List.map (fun (v, t, _) -> if v = v_name then (v, t, v_val) else (v, t, v_val)) eframe
-            in
-            new_frame :: xenv
-          else
-            raise (Type_Error("Cannot redefine variable " ^ v_name ^ " with different type"))
-      | None ->
-          (* Add new binding *)
-          let new_frame = (v_name, v_typ, v_val) :: eframe in
-          new_frame :: xenv
-    )
-
-let rec update_var v_name new_v_val env =
-  match env with 
-  | [] -> raise(Var_Not_Found("Variable Not Found : " ^ v_name))
-  | eframe::xenv ->
-    (
-      if List.exists (fun (v, _, _) -> v = v_name) eframe then
-        let new_frame =
-          List.map
-            (fun (v, v_typ, v_val) -> if v = v_name then (v, v_typ, new_v_val) else (v, v_typ, v_val))
-            eframe
-        in
-        new_frame :: xenv
-      else
-        eframe :: update_var v_name new_v_val env
-    )
+  | [] -> raise(Empty_Env("Empty Environment: No Scope"))
+  | frame::rest_env ->
+    let exists = (var_in_frame v_name env) in
+    if exists then
+      (* Variable exists in current scope, update it with type checking *)
+      let new_frame = 
+        List.map (fun (name, old_typ, old_val) -> 
+          if name = v_name then
+            if compatible_types old_typ v_typ 
+              then (name, v_typ, v_val)
+            else 
+              raise (Type_Error("Cannot redefine variable " ^ v_name ^ " with incompatible type"))
+          else 
+            (name, old_typ, old_val)
+        ) frame
+      in
+      new_frame :: rest_env
+    else
+      (* Add new binding to current frame *)
+      ((v_name, v_typ, v_val) :: frame) :: rest_env
 
 (* ------------------------- Scope Handling ------------------------- *)
 
@@ -89,9 +80,8 @@ let pop_scope env =
 let init_env () = [[]]
 
 (*===================================================================================*)
-                        (* Type Checking and Eval_Expr Implementation *)
+        (* Helper Functions for Type-Checking and Eval_Expr Implementation *)
 (*===================================================================================*)
-
 
 let read_from_terminal () =
   (* Read from stdin and parse into appropriate value *)
@@ -117,12 +107,46 @@ let pseudo_file_lex input_str typ_opt =
     | CONS_N n, Some T_INT -> VAL (INT_V n)
     | CONS_F f, Some T_FLOAT -> VAL (FLT_V f)
     | CONS_B b, Some T_BOOL -> VAL (BL_V b)
-    | CONS_VN (dim, vec), Some T_VEC_N -> VAL (NVEC_V vec)
-    | CONS_VF (dim, vec), Some T_VEC_F -> VAL (FVEC_V vec)
-    | CONS_MN (rows, cols, mat), Some T_MAT_N -> VAL (NMAT_V mat)
-    | CONS_MF (rows, cols, mat), Some T_MAT_F -> VAL (FMAT_V mat)
+    | CONS_VN (dim, vec), Some T_VEC_N -> 
+      if not (vec_dim_check dim vec) then
+        raise (Dimension_Mismatch (
+          "Expected vector of dimension " ^ string_of_int dim ^
+          ", but got dimension " ^ string_of_int (vec_dim vec)
+        ))
+      else
+        VAL (NVEC_V vec)
+    | CONS_VF (dim, vec), Some T_VEC_F -> 
+        if not (vec_dim_check dim vec) then
+          raise (Dimension_Mismatch (
+            "Expected vector of dimension " ^ string_of_int dim ^
+            ", but got dimension " ^ string_of_int (vec_dim vec)
+          ))
+        else
+          VAL (FVEC_V vec)
+    | CONS_MN (rows, cols, mat), Some T_MAT_N -> 
+        if not (mat_dim_check rows cols mat) then
+          raise (Dimension_Mismatch (
+            "Expected matrix with " ^ string_of_int rows ^ 
+            " rows and " ^ string_of_int cols ^ 
+            " columns, but found incorrect dimensions"
+          ))
+        else
+          VAL (NMAT_V mat)
+    | CONS_MF (rows, cols, mat), Some T_MAT_F -> 
+        if not (mat_dim_check rows cols mat) then
+          raise (Dimension_Mismatch (
+            "Expected matrix with " ^ string_of_int rows ^ 
+            " rows and " ^ string_of_int cols ^ 
+            " columns, but found inconsistent dimensions"
+          ))
+        else
+          VAL (FMAT_V mat)
     | _, None -> raise (Type_Error "Type annotation required for input")
     | _ -> raise (Type_Error ("Input doesn't match expected type"))
+      
+(*===================================================================================*)
+                  (* Type Checking and Eval_Expr Implementation *)
+(*===================================================================================*)
 
 let rec eval_expr env = function
   (* Base cases - values evaluate to themselves *)
@@ -394,15 +418,15 @@ let rec type_of_exp env = function
   | UN_OP (Mag_v, e) ->
       let t = type_of_exp env e in
       (match t with
-       | E_VEC_N _ -> E_FLOAT
-       | E_VEC_F _ -> E_FLOAT
+       | E_VEC_N n -> E_FLOAT
+       | E_VEC_F f -> E_FLOAT
        | _ -> raise (Type_Error "Magnitude operation requires vector operand"))
 
   | UN_OP (Dim, e) ->
       let t = type_of_exp env e in
       (match t with
-       | E_VEC_N _ -> E_INT
-       | E_VEC_F _ -> E_INT
+       | E_VEC_N n -> E_INT
+       | E_VEC_F f -> E_INT
        | _ -> raise (Type_Error "Dimension operation requires vector operand"))
 
   | UN_OP (Trp_Mat, e) ->
@@ -457,38 +481,58 @@ let rec type_of_exp env = function
 let rec eval_stmt env = function
   | Assign (typ_opt, id, expr) ->
       let value = eval_expr env expr in
-      (match value with
-        | FILE_V s ->
-          ( let input_content = if s = "" then (print_string "> "; flush stdout; read_line()) 
-                                else  (let ch = open_in s in let content = input_line ch in close_in ch; content) in
-            let processed_val = pseudo_file_lex s typ_opt in
-            let expr_type = type_of_exp env processed_val in
-            let expected_type = match typ_opt with
-              | Some t -> convert_to_etype t
-              | None -> expr_type
-            in
-            if compatible_types expr_type expected_type then 
-              define_var id expr_type expected_type
-            else
-              raise (Type_Error ("Type mismatch in assignment to " ^ id ^ 
-                                ": expected " ^ string_of_etype expected_type ^ 
-                                " but got " ^ string_of_etype expr_type))    
-          )
-
-        | _ ->
-        ( let expr_type = type_of_exp env expr in
-          let expected_type = match typ_opt with
-            | Some t -> convert_to_etype t
-            | None -> expr_type
-          in
-          if compatible_types expr_type expected_type then
-            define_var id expr_type value env
-          else
-            raise (Type_Error ("Type mismatch in assignment to " ^ id ^ 
-                              ": expected " ^ string_of_etype expected_type ^ 
-                              " but got " ^ string_of_etype expr_type))
-        )
-      )
+      (  match value with
+          | FILE_V s ->
+              (* Handle file input *)
+              let input_content = 
+                if s = "" then (print_string "> "; flush stdout; read_line()) 
+                else (let ch = open_in s in let content = input_line ch in close_in ch; content)
+              in
+              let processed_val = pseudo_file_lex input_content typ_opt in
+              let expr_type = type_of_exp env processed_val in
+              
+              (* Determine expected type *)
+              let expected_type = 
+                if var_in_frame id env then
+                  (* Get existing type if variable exists *)
+                  let (existing_typ, _) = lookup_var id env in
+                  existing_typ
+                else
+                  (* Use explicit type or infer from expression *)
+                  match typ_opt with
+                  | Some t -> convert_to_etype t
+                  | None -> raise (Type_Error ("Type annotation required for new variable " ^ id))
+              in
+              
+              (* Check type compatibility and define/update variable *)
+              if compatible_types expr_type expected_type then
+                define_var id expected_type processed_val env
+              else
+                raise (Type_Error ("Type mismatch in assignment to " ^ id))
+                
+          | _ ->
+              (* Handle normal value *)
+              let expr_type = type_of_exp env expr in
+              
+              (* Determine expected type *)
+              let expected_type = 
+                if var_in_frame id env then
+                  (* Get existing type if variable exists *)
+                  let (existing_typ, _) = lookup_var id env in
+                  existing_typ
+                else
+                  (* Use explicit type or infer from expression *)
+                  match typ_opt with
+                  | Some t -> convert_to_etype t
+                  | None -> raise (Type_Error ("Type annotation required for new variable " ^ id))
+              in
+              
+              (* Check type compatibility and define/update variable *)
+              if compatible_types expr_type expected_type then
+                define_var id expected_type value env
+              else
+                raise (Type_Error ("Type mismatch in assignment to " ^ id))
+      )        
   | Print expr ->
       let value = eval_expr env expr in
       print_value value;

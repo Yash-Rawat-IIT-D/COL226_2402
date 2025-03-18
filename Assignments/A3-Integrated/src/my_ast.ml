@@ -22,7 +22,7 @@ exception Empty_Env of string
 exception Type_Error of string
 exception Undefined_Var of string
 exception Division_by_zero of string
-
+exception Non_Invertible_Mat of string
 (*===================================================================================*)
                           (* Vector and Matrix Helper *)
 (*===================================================================================*)
@@ -68,6 +68,12 @@ let add_mat_f m1 m2 =
     raise (Dimension_Mismatch("Matrix column dimensions not same for addition"))
   else
     List.map2 (fun r1 r2 -> add_vec_f r1 r2) m1 m2
+
+let transpose_matrix mat =
+  if mat = [] then []
+  else
+    let (rows, cols) = mat_dim mat in
+    List.init cols (fun col -> List.init rows (fun row -> List.nth (List.nth mat row) col ))
 
 (* Values representing the primary data types in our PL *)
 (* Otherwise the basecases of our AST are now handled in a separate specification *)
@@ -284,7 +290,7 @@ let string_of_binop op =
 let string_of_unop op =
   match op with
   | Not -> "not"
-  | Neg -> "-"
+  | Neg -> "neg"
   | Mag_v -> "mag_v"
   | Dim -> "dim"
   | Trp_Mat -> "trp_mat"
