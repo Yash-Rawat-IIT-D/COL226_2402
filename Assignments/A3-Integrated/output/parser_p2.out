@@ -1,0 +1,6 @@
+Parsing successful!
+Parsed program:
+integer a := 5
+integer b := 10
+integer max := if (a > b) then a else b
+print(max)

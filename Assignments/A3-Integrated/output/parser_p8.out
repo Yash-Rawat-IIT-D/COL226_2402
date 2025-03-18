@@ -1,0 +1,6 @@
+Parsing successful!
+Parsed program:
+integer_vector v1 := 3 [1, 2, 3]
+integer_vector v2 := 3 [4, 5, 6]
+float result := (mag_v (v1 add_v v2))
+print(result)

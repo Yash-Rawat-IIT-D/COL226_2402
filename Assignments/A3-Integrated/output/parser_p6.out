@@ -1,0 +1,6 @@
+Parsing successful!
+Parsed program:
+integer a := (((5 * (10 + 2)) / 2) - 3)
+integer b := ((a * a) % 7)
+boolean result := (((not true) and false) or (true and (not false)))
+print(a)

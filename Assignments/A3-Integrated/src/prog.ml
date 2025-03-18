@@ -43,7 +43,7 @@ let var_in_frame v_name env =
   | frame::_ -> List.exists (fun (name, _, _) -> name = v_name) frame
 
 (* Define or update variable in current scope *)
-let define_var v_name v_typ v_val env = 
+let define_var v_name v_typ v_val (env :environment) = 
   match env with
   | [] -> raise(Empty_Env("Empty Environment: No Scope"))
   | frame::rest_env ->
@@ -162,7 +162,7 @@ let dot_prod_helper val1 val2 = match val1, val2 with
 	| _, _ -> raise (Type_Error "Invalid types for vector addition")
 
 let angle_helper val1 val2 = match val1, val2 with
-	| NVEC_V vec1, NVEC_V vec2 -> INT_V (angle_vec_n vec1 vec2)
+	| NVEC_V vec1, NVEC_V vec2 -> FLT_V (angle_vec_n vec1 vec2)
 	| FVEC_V vec1, FVEC_V vec2 -> FLT_V (angle_vec_f vec1 vec2)
 	| _, _ -> raise (Type_Error "Invalid types for vector addition")		
 
@@ -281,9 +281,10 @@ let rec eval_expr env = function
           | Not, BL_V b -> BL_V (not b)
           | Neg, INT_V i -> INT_V (-i)
           | Neg, FLT_V f -> FLT_V (-.f)
-          | Mag_v, NVEC_V vec -> FLT_V (mag_vec_n v)
-          | Mag_v, FVEC_V vec -> FLT_V (mag_vec_f v)
-          | Dim, NVEC_V vec | Dim, FVEC_V vec -> INT_V (vec_dim vec)
+          | Mag_v, NVEC_V vec -> FLT_V (mag_vec_n vec)
+          | Mag_v, FVEC_V vec -> FLT_V (mag_vec_f vec)
+          | Dim, NVEC_V vec -> INT_V (vec_dim vec)
+          | Dim, FVEC_V vec -> INT_V (vec_dim vec)
           | Trp_Mat, NMAT_V mat -> NMAT_V (transpose_matrix_n mat)
           | Trp_Mat, FMAT_V mat -> FMAT_V (transpose_matrix_f mat)
           | Det, NMAT_V mat -> INT_V (determinant_n mat)
@@ -303,8 +304,8 @@ let rec eval_expr env = function
   | Input fname_opt -> 
     (
       match fname_opt with 
-      | None -> VAL (FILE_V "")
-      | Some fname -> VAL (FILE_V fname)
+      | None -> FILE_V ""
+      | Some fname -> FILE_V fname
     )
 (* Helper function to check type compatibility *)
 let rec type_of_exp env = function
@@ -320,7 +321,6 @@ let rec type_of_exp env = function
   | VAL (FMAT_V m) -> 
       let (rows, cols) = mat_dim m in
       E_MAT_F (rows, cols)
-  | VAL (FILE_V s) -> 
   | IDF v -> (
       try
         let (typ, _) = lookup_var v env in
@@ -570,9 +570,9 @@ let rec eval_stmt env = function
                 if s = "" then (print_string "> "; flush stdout; read_line()) 
                 else (let ch = open_in s in let content = input_line ch in close_in ch; content)
               in
-              let processed_val = pseudo_file_lex input_content typ_opt in
-              let expr_type = type_of_exp env processed_val in
-              
+              let processed_exp = pseudo_file_lex input_content typ_opt in
+              let processed_exp_type = type_of_exp env processed_exp in
+              let processed_val = eval_expr env processed_exp in              
               (* Determine expected type *)
               let expected_type = 
                 if var_in_frame id env then
@@ -587,7 +587,7 @@ let rec eval_stmt env = function
               in
               
               (* Check type compatibility and define/update variable *)
-              if compatible_types expr_type expected_type then
+              if compatible_types processed_exp_type expected_type then
                 define_var id expected_type processed_val env
               else
                 raise (Type_Error ("Type mismatch in assignment to " ^ id))
@@ -622,7 +622,8 @@ let rec eval_stmt env = function
       
   | Return expr ->
       (* Store the return value for later use *)
-      let value = eval_expr env expr in
+      (* No Function Calls so not needed *)
+      (* let value = eval_expr env expr in *)
       env
       
   | Break | Continue ->

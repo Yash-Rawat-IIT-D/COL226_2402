@@ -13,8 +13,8 @@ OUTPUT_DIR = output
 # Flags
 OCAMLFLAGS = -I $(SRC_DIR)
 
-# Default target - build lexer_test, parser_test, and interpreter
-all: directories $(BUILD_DIR)/lexer_test $(BUILD_DIR)/parser_test $(BUILD_DIR)/interpreter
+# Default target - build lexer_test, parser_test
+all: directories $(BUILD_DIR)/lexer_test $(BUILD_DIR)/parser_test
 
 # Create necessary directories
 directories:
@@ -61,11 +61,7 @@ $(BUILD_DIR)/lexer_test: $(SRC_DIR)/my_ast.cmo $(SRC_DIR)/my_parser.cmo $(SRC_DI
 	$(OCAMLC) $(OCAMLFLAGS) -o $@ $^
 
 # Build parser test executable
-$(BUILD_DIR)/parser_test: $(SRC_DIR)/my_ast.cmo $(SRC_DIR)/my_parser.cmo $(SRC_DIR)/my_lexer.cmo $(SRC_DIR)/main_parser.cmo
-	$(OCAMLC) $(OCAMLFLAGS) -o $@ $^
-
-# Build interpreter executable
-$(BUILD_DIR)/interpreter: $(SRC_DIR)/my_ast.cmo $(SRC_DIR)/my_parser.cmo $(SRC_DIR)/my_lexer.cmo $(SRC_DIR)/prog.cmo
+$(BUILD_DIR)/parser_test: $(SRC_DIR)/my_ast.cmo $(SRC_DIR)/my_parser.cmo $(SRC_DIR)/my_lexer.cmo $(SRC_DIR)/prog.cmo $(SRC_DIR)/main_parser.cmo
 	$(OCAMLC) $(OCAMLFLAGS) -o $@ $^
 
 # Run lexer tests
