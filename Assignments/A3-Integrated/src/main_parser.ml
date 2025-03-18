@@ -3,6 +3,7 @@
 open My_ast
 open My_lexer
 open My_parser
+open Prog
 
 (* Function to parse from a file *)
 let parse_file filename =

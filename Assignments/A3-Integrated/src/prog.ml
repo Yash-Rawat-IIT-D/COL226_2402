@@ -7,8 +7,10 @@
 
 (* prog.ml - Implements the type-checking and variable environment/scoping *)
 
+open Lexing
 open My_ast
 open My_lexer
+open My_parser
 
 (*===================================================================================*)
 
@@ -83,6 +85,94 @@ let init_env () = [[]]
         (* Helper Functions for Type-Checking and Eval_Expr Implementation *)
 (*===================================================================================*)
 
+(* Helper function for addition *)
+let add_helper val1 val2 = match val1, val2 with
+  | INT_V i1, INT_V i2 -> INT_V (i1 + i2)
+  | FLT_V f1, FLT_V f2 -> FLT_V (f1 +. f2)
+  | INT_V i1, FLT_V f2 -> FLT_V ((float_of_int i1) +. f2) (* Supporting type promotion *) 
+  | FLT_V f1, INT_V i2 -> FLT_V (f1 +. (float_of_int i2))
+  | _,_ -> raise (Type_Error "Invalid type of values for Add (Scalar Addition)")
+
+(* Helper function for subtraction *)
+let sub_helper val1 val2 = match val1, val2 with
+  | INT_V i1, INT_V i2 -> INT_V (i1 - i2)
+  | FLT_V f1, FLT_V f2 -> FLT_V (f1 -. f2)
+  | INT_V i1, FLT_V f2 -> FLT_V ((float_of_int i1) -. f2) (* Supporting type promotion *)
+  | FLT_V f1, INT_V i2 -> FLT_V (f1 -. (float_of_int i2))
+  | _,_ -> raise (Type_Error "Invalid type of values for Sub (Scalar Subtraction)")
+
+(* Helper function for multiplication *)
+let mul_helper val1 val2 = match val1, val2 with
+  | INT_V i1, INT_V i2 -> INT_V (i1 * i2)
+  | FLT_V f1, FLT_V f2 -> FLT_V (f1 *. f2)
+  | INT_V i1, FLT_V f2 -> FLT_V ((float_of_int i1) *. f2) (* Supporting type promotion *)
+  | FLT_V f1, INT_V i2 -> FLT_V (f1 *. (float_of_int i2))
+  | _,_ -> raise (Type_Error "Invalid type of values for Mul (Scalar Multiplication)")
+
+(* Helper function for division *)
+let div_helper val1 val2 = match val1, val2 with
+  | INT_V i1, INT_V i2 -> 
+      if i2 = 0 then raise (Division_by_zero "Integer division by zero")
+      else INT_V (i1 / i2)
+  | FLT_V f1, FLT_V f2 -> 
+      if f2 = 0.0 then raise (Division_by_zero "Float division by zero")
+      else FLT_V (f1 /. f2)
+  | INT_V i1, FLT_V f2 -> 
+      if f2 = 0.0 then raise (Division_by_zero "Float division by zero")
+      else FLT_V ((float_of_int i1) /. f2)
+  | FLT_V f1, INT_V i2 -> 
+      if i2 = 0 then raise (Division_by_zero "Float division by zero")
+      else FLT_V (f1 /. (float_of_int i2))
+  | _,_ -> raise (Type_Error "Invalid type of values for Div (Scalar Division)")
+
+(* Helper function for modulo *)
+let mod_helper val1 val2 = match val1, val2 with
+  | INT_V i1, INT_V i2 -> 
+      if i2 = 0 then raise (Division_by_zero "Modulo by zero")
+      else INT_V (i1 mod i2)
+  | _,_ -> raise (Type_Error "Modulo operation only supported for integers")
+
+let add_vec_helper val1 val2 = match val1, val2 with
+	| NVEC_V vec1, NVEC_V vec2 -> NVEC_V (add_vec_n vec1 vec2)
+	| FVEC_V vec1, FVEC_V vec2 -> FVEC_V (add_vec_f vec1 vec2)
+	| _, _ -> raise (Type_Error "Invalid types for vector addition")
+
+let add_mat_helper val1 val2 = match val1, val2 with
+	| NMAT_V mat1, NMAT_V mat2 -> NMAT_V (add_mat_n mat1 mat2)
+	| FMAT_V mat1, FMAT_V mat2 -> FMAT_V (add_mat_f mat1 mat2)
+	| _, _ -> raise (Type_Error "Invalid types for matrix addition")
+
+let scal_vec_helper val1 val2 = match val1, val2 with 
+	| INT_V s, NVEC_V v -> NVEC_V (scal_n_vec_n s v)
+	| FLT_V s, NVEC_V v -> FVEC_V (scal_f_vec_n s v)
+	| INT_V s, FVEC_V v -> FVEC_V (scal_n_vec_f s v)
+	| FLT_V s, FVEC_V v -> FVEC_V (scal_f_vec_f s v)
+	| _, _ -> raise (Type_Error "Invalid types for scalar-vector multiplication") 
+
+let scal_mat_helper val1 val2 = match val1, val2 with
+	| INT_V s, NMAT_V m -> NMAT_V (scal_n_mat_n s m)
+	| FLT_V s, NMAT_V m -> FMAT_V (scal_f_mat_n s m)
+	| INT_V s, FMAT_V m -> FMAT_V (scal_n_mat_f s m)
+	| FLT_V s, FMAT_V m -> FMAT_V (scal_f_mat_f s m)
+	| _, _ -> raise (Type_Error "Invalid types for scalar-matrix multiplication") 
+
+let dot_prod_helper val1 val2 = match val1, val2 with
+	| NVEC_V vec1, NVEC_V vec2 -> INT_V (dot_prod_n vec1 vec2)
+	| FVEC_V vec1, FVEC_V vec2 -> FLT_V (dot_prod_f vec1 vec2)
+	| _, _ -> raise (Type_Error "Invalid types for vector addition")
+
+let angle_helper val1 val2 = match val1, val2 with
+	| NVEC_V vec1, NVEC_V vec2 -> INT_V (angle_vec_n vec1 vec2)
+	| FVEC_V vec1, FVEC_V vec2 -> FLT_V (angle_vec_f vec1 vec2)
+	| _, _ -> raise (Type_Error "Invalid types for vector addition")		
+
+let mat_mul_mat_helper val1 val2 = match val1 val2 with
+	| INT_V s, NMAT_V m -> NMAT_V (scal_n_mat_n s m)
+	| FLT_V s, NMAT_V m -> FMAT_V (scal_f_mat_n s m)
+	| INT_V s, FMAT_V m -> FMAT_V (scal_n_mat_f s m)
+	| FLT_V s, FMAT_V m -> FMAT_V (scal_f_mat_f s m)
+	| _, _ -> raise (Type_Error "Invalid types for scalar-matrix multiplication")	
+
 let read_from_terminal () =
   (* Read from stdin and parse into appropriate value *)
   print_string "> ";
@@ -147,7 +237,7 @@ let pseudo_file_lex input_str typ_opt =
 (*===================================================================================*)
                   (* Type Checking and Eval_Expr Implementation *)
 (*===================================================================================*)
-
+  
 let rec eval_expr env = function
   (* Base cases - values evaluate to themselves *)
   | VAL v -> v
@@ -165,49 +255,42 @@ let rec eval_expr env = function
       let v1 = eval_expr env e1 in
       let v2 = eval_expr env e2 in
       (match op, v1, v2 with
-       | Add, INT_V i1, INT_V i2 -> INT_V (i1 + i2)
-       | Add, FLT_V f1, FLT_V f2 -> FLT_V (f1 +. f2)
-       | Sub, INT_V i1, INT_V i2 -> INT_V (i1 - i2)
-       | Sub, FLT_V f1, FLT_V f2 -> FLT_V (f1 -. f2)
-       | Mul, INT_V i1, INT_V i2 -> INT_V (i1 * i2)
-       | Mul, FLT_V f1, FLT_V f2 -> FLT_V (f1 *. f2)
-       | Div, INT_V i1, INT_V i2 -> 
-           if i2 = 0 then raise (Division_By_Zero "Integer division by zero")
-           else INT_V (i1 / i2)
-       | Div, FLT_V f1, FLT_V f2 -> 
-           if f2 = 0.0 then raise (Division_By_Zero "Float division by zero")
-           else FLT_V (f1 /. f2)
-       | Modulo, INT_V i1, INT_V i2 -> 
-           if i2 = 0 then raise (Division_By_Zero "Modulo by zero")
-           else INT_V (i1 mod i2)
-       | And, BL_V b1, BL_V b2 -> BL_V (b1 && b2)
-       | Or, BL_V b1, BL_V b2 -> BL_V (b1 || b2)
-       | Eq, INT_V i1, INT_V i2 -> BL_V (i1 = i2)
-       | Neq, INT_V i1, INT_V i2 -> BL_V (i1 <> i2)
-       | Lt, INT_V i1, INT_V i2 -> BL_V (i1 < i2)
-       | Gt, INT_V i1, INT_V i2 -> BL_V (i1 > i2)
-       | Leq, INT_V i1, INT_V i2 -> BL_V (i1 <= i2)
-       | Geq, INT_V i1, INT_V i2 -> BL_V (i1 >= i2)
-       | _ -> raise (Type_Error "Type mismatch in binary operation"))
+        | Add, val1, val2 -> add_helper val1 val2
+        | Sub, val1, val2-> sub_helper val1 val2
+        | Mul, val1, val2 -> mul_helper val1 val2
+        | Div, val1, val2 -> div_helper val1 val2
+        | Modulo, val1, val2 -> mod_helper val1 val2
+        | And, BL_V b1, BL_V b2 -> BL_V (b1 && b2)
+        | Or, BL_V b1, BL_V b2 -> BL_V (b1 || b2)
+        | Eq, INT_V i1, INT_V i2 -> BL_V (i1 = i2)
+        | Neq, INT_V i1, INT_V i2 -> BL_V (i1 <> i2)
+        | Lt, INT_V i1, INT_V i2 -> BL_V (i1 < i2)
+        | Gt, INT_V i1, INT_V i2 -> BL_V (i1 > i2)
+        | Leq, INT_V i1, INT_V i2 -> BL_V (i1 <= i2)
+        | Geq, INT_V i1, INT_V i2 -> BL_V (i1 >= i2)
+				| Add_Vec, val1, val2 -> add_vec_helper val1 val2
+				| Scal_Vec, val1, val2 -> scal_vec_helper val1 val2
+				| Add_Mat, val1, val2 -> add_mat_helper val1 val2
+				| Scal_Mat, val1, val2 -> scal_mat_helper val1 val2
+        | _ -> raise (Type_Error "Type mismatch in binary operation"))
 
   (* Unary operations *)
   | UN_OP (op, e) ->
       let v = eval_expr env e in
-      (match op, v with
-       | Not, BL_V b -> BL_V (not b)
-       | Neg, INT_V i -> INT_V (-i)
-       | Neg, FLT_V f -> FLT_V (-.f)
-       | Mag_v, NVEC_V vec -> 
-           (* Calculate magnitude of integer vector *)
-           let sum_of_sq = List.fold_left (fun acc x -> acc + x * x) 0 vec in
-           FLT_V (sqrt (float_of_int sum_of_sq))
-       | Mag_v, FVEC_V vec -> 
-           (* Calculate magnitude of float vector *)
-           let sum_of_sq = List.fold_left (fun acc x -> acc +. x *. x) 0.0 vec in
-           FLT_V (sqrt sum_of_sq)
-       | Dim, NVEC_V vec -> INT_V (List.length vec)
-       | Dim, FVEC_V vec -> INT_V (List.length vec)
-       | _ -> raise (Type_Error "Type mismatch in unary operation"))
+      ( match op, v with
+          | Not, BL_V b -> BL_V (not b)
+          | Neg, INT_V i -> INT_V (-i)
+          | Neg, FLT_V f -> FLT_V (-.f)
+          | Mag_v, NVEC_V vec -> FLT_V (mag_vec_n v)
+          | Mag_v, FVEC_V vec -> FLT_V (mag_vec_f v)
+          | Dim, NVEC_V vec | Dim, FVEC_V vec -> INT_V (vec_dim vec)
+          | Trp_Mat, NMAT_V mat -> NMAT_V (transpose_matrix_n mat)
+          | Trp_Mat, FMAT_V mat -> FMAT_V (transpose_matrix_f mat)
+          | Det, NMAT_V mat -> INT_V (determinant_n mat)
+          | Det, FMAT_V mat -> FLT_V (determinant_f mat)
+          | Inv, NMAT_V mat -> FMAT_V (inverse_matrix_n mat)
+          | Inv, FMAT_V mat -> FMAT_V (inverse_matrix_f mat)
+          | _ -> raise (Type_Error "Type mismatch in unary operation"))
   
   (* Conditional expression *)
   | COND (cond, then_expr, else_expr) ->
@@ -238,8 +321,7 @@ let rec type_of_exp env = function
       let (rows, cols) = mat_dim m in
       E_MAT_F (rows, cols)
   | VAL (FILE_V s) -> 
-  | IDF v ->
-    (
+  | IDF v -> (
       try
         let (typ, _) = lookup_var v env in
         typ

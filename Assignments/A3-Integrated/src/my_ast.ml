@@ -42,6 +42,12 @@ let mat_dim_check exp_rows exp_cols mat =
     let cols_matched = List.fold_left (fun acc row -> acc && (List.length row = exp_cols)) true mat in
     cols_matched
 
+let mag_vec_n v = let sum_of_sq = List.fold_left (fun acc x -> acc + x * x) 0 v in
+                  sqrt (float_of_int sum_of_sq)
+
+let mag_vec_f v = let sum_of_sq = List.fold_left (fun acc x -> acc +. x *. x) 0.0 v in
+                  sqrt sum_of_sq
+
 let add_vec_n v1 v2 =
   if vec_dim v1 <> vec_dim v2 then raise (Dimension_Mismatch ("Vector dimensions do not match for addition")) 
   else
@@ -69,11 +75,234 @@ let add_mat_f m1 m2 =
   else
     List.map2 (fun r1 r2 -> add_vec_f r1 r2) m1 m2
 
+(* Vector scalar multiplication *)
+let scal_n_vec_n scalar vec =
+  List.map (fun x -> scalar * x) vec
+
+let scal_f_vec_n scalar vec =
+  List.map (fun x -> scalar *. (float_of_int x)) vec
+    
+let scal_f_vec_f scalar vec =
+  List.map (fun x -> scalar *. x) vec
+
+let scal_n_vec_f scalar vec = 
+  scal_f_vec_f (float_of_int scalar) vec
+
+(* Matrix scalar multiplication *)
+let scal_n_mat_n scalar mat =
+  List.map (fun row -> scal_n_vec_n scalar row) mat
+
+let scal_f_mat_n scalar mat =
+  List.map (fun row -> scal_f_vec_n scalar row) mat
+    
+let scal_f_mat_f scalar mat =
+  List.map (fun row -> scal_f_vec_f scalar row) mat
+
+let scal_n_mat_f scalar mat = 
+  scal_f_mat_f (float_of_int scalar) mat
+
+let dot_prod_n v1 v2 =
+  if vec_dim v1 <> vec_dim v2 then 
+    raise (Dimension_Mismatch "Vector dimensions do not match for dot product")
+  else
+    List.fold_left (+) 0 (List.map2 ( * ) v1 v2)
+  
+let dot_prod_f v1 v2 =
+  if vec_dim v1 <> vec_dim v2 then 
+    raise (Dimension_Mismatch "Vector dimensions do not match for dot product")
+  else
+    List.fold_left (+.) 0.0 (List.map2 ( *. ) v1 v2)
+
+let angle_vec_n v1 v2 =
+  if vec_dim v1 <> vec_dim v2 then 
+    raise (Dimension_Mismatch "Vector dimensions do not match for angle calculation")
+  else
+    let dot = float_of_int (dot_prod_n v1 v2) in
+    let mag1 = sqrt (float_of_int (dot_prod_n v1 v1)) in
+    let mag2 = sqrt (float_of_int (dot_prod_n v2 v2)) in
+    if mag1 = 0.0 || mag2 = 0.0 then
+      raise (Division_by_zero "Cannot calculate angle with zero vector")
+    else
+      acos (dot /. (mag1 *. mag2))
+
+let angle_vec_f v1 v2 =
+  if vec_dim v1 <> vec_dim v2 then 
+    raise (Dimension_Mismatch "Vector dimensions do not match for angle calculation")
+  else
+    let dot = dot_prod_f v1 v2 in
+    let mag1 = sqrt (dot_prod_f v1 v1) in
+    let mag2 = sqrt (dot_prod_f v2 v2) in
+    if mag1 = 0.0 || mag2 = 0.0 then
+      raise (Division_by_zero "Cannot calculate angle with zero vector")
+    else
+      acos (dot /. (mag1 *. mag2))
+
+(* Transpose a matrix - works for both integer and float matrices *)
 let transpose_matrix mat =
   if mat = [] then []
   else
     let (rows, cols) = mat_dim mat in
-    List.init cols (fun col -> List.init rows (fun row -> List.nth (List.nth mat row) col ))
+    List.init cols (fun col ->
+      List.init rows (fun row ->
+        List.nth (List.nth mat row) col
+      )
+    )
+(* Aliases for type-spec operations *)
+let transpose_matrix_n = transpose_matrix
+let transpose_matrix_f = transpose_matrix
+
+(* Matrix multiplication *)
+let mat_mul_mat_n m1 m2 =
+  let (rows1, cols1) = mat_dim m1 in
+  let (rows2, cols2) = mat_dim m2 in
+  
+  if cols1 <> rows2 then
+    raise (Dimension_Mismatch "Matrix dimensions incompatible for multiplication")
+  else
+    let m2_t = transpose_matrix m2 in
+    List.map (fun row1 ->
+      List.map (fun col2 ->
+        List.fold_left (+) 0 (List.map2 ( * ) row1 col2)
+      ) m2_t
+    ) m1
+
+let mat_mul_mat_f m1 m2 =
+  let (rows1, cols1) = mat_dim m1 in
+  let (rows2, cols2) = mat_dim m2 in
+  
+  if cols1 <> rows2 then
+    raise (Dimension_Mismatch "Matrix dimensions incompatible for multiplication")
+  else
+    let m2_t = transpose_matrix m2 in
+    List.map (fun row1 ->
+      List.map (fun col2 ->
+        List.fold_left (+.) 0.0 (List.map2 ( *. ) row1 col2)
+      ) m2_t
+    ) m1
+let submatrix mat row col =
+  mat
+  |> List.mapi (fun i r -> 
+                  if i <> row then 
+                    r |> List.filteri (fun j _ -> j <> col) 
+                  else [] ) 
+  |> List.filter (fun r -> r <> [])
+(* Aliases for type-spec operations *)
+let submatrix_n = submatrix
+let submatrix_f = submatrix
+
+let rec determinant_n mat =
+  let (rows, cols) = mat_dim mat in
+  
+  (* Check if square matrix *)
+  if rows <> cols then
+    raise (Dimension_Mismatch "Determinant requires square matrix")
+  else 
+    match rows with
+    | 0 -> raise (Dimension_Mismatch "Empty matrix has no determinant")
+    | 1 -> List.hd (List.hd mat) (* 1x1 matrix *)
+    | 2 -> (match mat with
+            |[[a; b]; [c; d]] -> a * d - b * c
+            | _ -> raise(Dimension_Mismatch("Expected Two By Two Matrix in the case"))
+            )
+    | n ->
+        (* For larger matrices, use cofactor expansion along first row *)
+        let first_row = List.hd mat in
+        
+        (* Calculate determinant using cofactor expansion *)
+        List.mapi (fun j element ->
+          let sign = if j mod 2 = 0 then 1 else -1 in
+          let sub = submatrix mat 0 j in
+          sign * element * determinant_n sub
+        ) first_row
+        |> List.fold_left (+) 0
+
+(* Determinant calculation for float matrices *)
+let rec determinant_f mat =
+  let (rows, cols) = mat_dim mat in
+  
+  (* Check if square matrix *)
+  if rows <> cols then
+    raise (Dimension_Mismatch "Determinant requires square matrix")
+  else 
+    match rows with
+    | 0 -> raise (Dimension_Mismatch "Empty matrix has no determinant")
+    | 1 -> List.hd (List.hd mat) (* 1x1 matrix *)
+    | 2 -> (match mat with
+              |[[a; b]; [c; d]] -> a *. d -. b *. c
+              | _ -> raise(Dimension_Mismatch("Expected Two By Two Matrix in the case"))
+          )
+    | n ->
+        (* For larger matrices, use cofactor expansion along first row *)
+        let first_row = List.hd mat in
+        
+        (* Calculate determinant using cofactor expansion *)
+        List.mapi (fun j element ->
+          let sign = if j mod 2 = 0 then 1.0 else -1.0 in
+          let sub = submatrix mat 0 j in
+          sign *. element *. determinant_f sub
+        ) first_row
+        |> List.fold_left (+.) 0.0
+
+(* Calculate the cofactor of a matrix element mat[i][j] *)
+let cofactor_n mat i j =
+  let sub = submatrix mat i j in
+  let det = determinant_n sub in
+  if (i + j) mod 2 = 0 then det else -1 * det
+
+let cofactor_f mat i j =
+  let sub = submatrix mat i j in
+  let det = determinant_f sub in
+  if (i + j) mod 2 = 0 then det else -1.0 *. det
+
+(* Calculate the adjoint of a matrix *)
+let adjoint_n mat =
+  let n = List.length mat in
+  List.init n (fun i ->
+    List.init n (fun j ->
+      cofactor_n mat j i  (* Note: j,i instead of i,j for transpose *)
+    )
+  )
+
+let adjoint_f mat =
+  let n = List.length mat in
+  List.init n (fun i ->
+    List.init n (fun j ->
+      cofactor_f mat j i  (* Note: j,i instead of i,j for transpose *)
+    )
+  )
+
+(* Calculate inverse of a matrix using cofactor method *)
+let inverse_matrix_n mat =
+  let n = List.length mat in
+  if n <> List.length (List.hd mat) then
+    raise (Dimension_Mismatch "Inverse requires square matrix")
+  else 
+    let det = determinant_n mat in
+    if det = 0 then
+      raise (Division_by_zero "Matrix is not invertible (determinant is zero)")
+    else
+      let adj = adjoint_n mat in
+      List.map (fun row ->
+        List.map (fun elem -> float_of_int elem /. float_of_int det) row
+      ) adj
+
+let inverse_matrix_f mat =
+  let n = List.length mat in
+  if n <> List.length (List.hd mat) then
+    raise (Dimension_Mismatch "Inverse requires square matrix")
+  else 
+    let det = determinant_f mat in
+    if det = 0.0 then
+      raise (Division_by_zero "Matrix is not invertible (determinant is zero)")
+    else
+      let adj = adjoint_f mat in
+      List.map (fun row ->
+        List.map (fun elem -> elem /. det) row
+      ) adj      
+
+(*===================================================================================*)
+      (* Values, Operators types and ex-tended types in My Programming Language *)
+(*===================================================================================*)
 
 (* Values representing the primary data types in our PL *)
 (* Otherwise the basecases of our AST are now handled in a separate specification *)
@@ -135,11 +364,10 @@ type stmt =
   | Print of exp
   | Block of stmt list  (* One of the most important ideas of a program *)
 
-
 type program = stmt list
 
 (*===================================================================================*)
-                              (* Utility Functions *)
+                      (* String and Print Utility Functions *)
 (*===================================================================================*)
 
 let print_vector_fl dim vec =

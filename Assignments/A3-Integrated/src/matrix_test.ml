@@ -1,9 +1,115 @@
 exception Dimension_Mismatch of string
 exception Division_by_zero of string
+
+let vec_dim vec = List.length vec
 let mat_dim mat = match mat with 
-  | [] -> failwith "Empty Matrix not allowed"
+  | [] -> raise (Dimension_Mismatch ("Empty Matrix not allowed"))
   | row::_ -> (List.length mat, List.length row)
 
+let vec_dim_check exp_dim vec =
+  List.length vec = exp_dim
+
+let mat_dim_check exp_rows exp_cols mat =
+  let rows = List.length mat in
+  if rows <> exp_rows then false
+  else
+    let cols_matched = List.fold_left (fun acc row -> acc && (List.length row = exp_cols)) true mat in
+    cols_matched
+
+let mag_vec_n v = let sum_of_sq = List.fold_left (fun acc x -> acc + x * x) 0 v in
+                  sqrt (float_of_int sum_of_sq)
+
+let mag_vec_f v = let sum_of_sq = List.fold_left (fun acc x -> acc +. x *. x) 0.0 v in
+                  sqrt sum_of_sq
+
+let add_vec_n v1 v2 =
+  if vec_dim v1 <> vec_dim v2 then raise (Dimension_Mismatch ("Vector dimensions do not match for addition")) 
+  else
+    List.map2 (+) v1 v2
+
+let add_vec_f v1 v2 =
+  if List.length v1 <> List.length v2 then
+    raise (Dimension_Mismatch "Vector dimensions do not match for addition")
+  else
+    List.map2 (+.) v1 v2
+
+let add_mat_n m1 m2 =
+  if List.length m1 <> List.length m2 then
+    raise (Dimension_Mismatch("Matrix row dimensions not same for addition"))
+  else if List.length (List.hd m1) <> List.length (List.hd m2) then
+    raise (Dimension_Mismatch("Matrix column dimensions not same for addition"))
+  else
+    List.map2 (fun r1 r2 -> add_vec_n r1 r2) m1 m2
+
+let add_mat_f m1 m2 =
+  if List.length m1 <> List.length m2 then
+    raise (Dimension_Mismatch("Matrix row dimensions not same for addition"))
+  else if List.length (List.hd m1) <> List.length (List.hd m2) then
+    raise (Dimension_Mismatch("Matrix column dimensions not same for addition"))
+  else
+    List.map2 (fun r1 r2 -> add_vec_f r1 r2) m1 m2
+
+(* Vector scalar multiplication *)
+let scal_n_vec_n scalar vec =
+  List.map (fun x -> scalar * x) vec
+
+let scal_f_vec_n scalar vec =
+  List.map (fun x -> scalar *. (float_of_int x)) vec
+    
+let scal_f_vec_f scalar vec =
+  List.map (fun x -> scalar *. x) vec
+
+let scal_n_vec_f scalar vec = 
+  scal_f_vec_f (float_of_int scalar) vec
+
+(* Matrix scalar multiplication *)
+let scal_n_mat_n scalar mat =
+  List.map (fun row -> scal_n_vec_n scalar row) mat
+
+let scal_f_mat_n scalar mat =
+  List.map (fun row -> scal_f_vec_n scalar row) mat
+    
+let scal_f_mat_f scalar mat =
+  List.map (fun row -> scal_f_vec_f scalar row) mat
+
+let scal_n_mat_f scalar mat = 
+  scal_f_mat_f (float_of_int scalar) mat
+
+let dot_prod_n v1 v2 =
+  if vec_dim v1 <> vec_dim v2 then 
+    raise (Dimension_Mismatch "Vector dimensions do not match for dot product")
+  else
+    List.fold_left (+) 0 (List.map2 ( * ) v1 v2)
+  
+let dot_prod_f v1 v2 =
+  if vec_dim v1 <> vec_dim v2 then 
+    raise (Dimension_Mismatch "Vector dimensions do not match for dot product")
+  else
+    List.fold_left (+.) 0.0 (List.map2 ( *. ) v1 v2)
+
+let angle_vec_n v1 v2 =
+  if vec_dim v1 <> vec_dim v2 then 
+    raise (Dimension_Mismatch "Vector dimensions do not match for angle calculation")
+  else
+    let dot = float_of_int (dot_prod_n v1 v2) in
+    let mag1 = sqrt (float_of_int (dot_prod_n v1 v1)) in
+    let mag2 = sqrt (float_of_int (dot_prod_n v2 v2)) in
+    if mag1 = 0.0 || mag2 = 0.0 then
+      raise (Division_by_zero "Cannot calculate angle with zero vector")
+    else
+      acos (dot /. (mag1 *. mag2))
+
+let angle_vec_f v1 v2 =
+  if vec_dim v1 <> vec_dim v2 then 
+    raise (Dimension_Mismatch "Vector dimensions do not match for angle calculation")
+  else
+    let dot = dot_prod_f v1 v2 in
+    let mag1 = sqrt (dot_prod_f v1 v1) in
+    let mag2 = sqrt (dot_prod_f v2 v2) in
+    if mag1 = 0.0 || mag2 = 0.0 then
+      raise (Division_by_zero "Cannot calculate angle with zero vector")
+    else
+      acos (dot /. (mag1 *. mag2))
 (* Transpose a matrix - works for both integer and float matrices *)
 let transpose_matrix mat =
   if mat = [] then []
@@ -39,9 +145,9 @@ let rec determinant_n mat =
     | 0 -> raise (Dimension_Mismatch "Empty matrix has no determinant")
     | 1 -> List.hd (List.hd mat) (* 1x1 matrix *)
     | 2 -> (match mat with
-           |[[a; b]; [c; d]] -> a * d - b * c
-           | _ -> raise(Dimension_Mismatch("Expected Two By Two Matrix in the case"))
-           )
+            |[[a; b]; [c; d]] -> a * d - b * c
+            | _ -> raise(Dimension_Mismatch("Expected Two By Two Matrix in the case"))
+            )
     | n ->
         (* For larger matrices, use cofactor expansion along first row *)
         let first_row = List.hd mat in
@@ -91,6 +197,36 @@ let cofactor_f mat i j =
   let sub = submatrix mat i j in
   let det = determinant_f sub in
   if (i + j) mod 2 = 0 then det else -1.0 *. det
+
+(* Matrix multiplication *)
+let mat_mul_mat_n m1 m2 =
+  let (rows1, cols1) = mat_dim m1 in
+  let (rows2, cols2) = mat_dim m2 in
+  
+  if cols1 <> rows2 then
+    raise (Dimension_Mismatch "Matrix dimensions incompatible for multiplication")
+  else
+    let m2_t = transpose_matrix m2 in
+    List.map (fun row1 ->
+      List.map (fun col2 ->
+        List.fold_left (+) 0 (List.map2 ( * ) row1 col2)
+      ) m2_t
+    ) m1
+
+let mat_mul_mat_f m1 m2 =
+let (rows1, cols1) = mat_dim m1 in
+let (rows2, cols2) = mat_dim m2 in
+
+if cols1 <> rows2 then
+  raise (Dimension_Mismatch "Matrix dimensions incompatible for multiplication")
+else
+  let m2_t = transpose_matrix m2 in
+  List.map (fun row1 ->
+    List.map (fun col2 ->
+      List.fold_left (+.) 0.0 (List.map2 ( *. ) row1 col2)
+    ) m2_t
+  ) m1
+
 
 (* Calculate the adjoint of a matrix *)
 let adjoint_n mat =
@@ -328,3 +464,67 @@ let () =
   let inv_f = inverse_matrix_f mf_2x2 in
   print_endline "Inverse of float matrix:";
   print_float_matrix inv_f;
+
+    (* Test matrix multiplication *)
+  print_endline "\n===== MATRIX MULTIPLICATION TESTS =====";
+
+  (* 2x2 matrix multiplication *)
+  let m2x2_a = [[1; 2]; [3; 4]] in
+  let m2x2_b = [[5; 6]; [7; 8]] in
+  print_endline "Matrix A:";
+  print_int_matrix m2x2_a;
+  print_endline "Matrix B:";
+  print_int_matrix m2x2_b;
+
+  let m2x2_result = mat_mul_mat_n m2x2_a m2x2_b in
+  print_endline "A × B:";
+  print_int_matrix m2x2_result;
+
+  (* 3x2 * 2x3 matrix multiplication *)
+  let m3x2 = [[1; 2]; [3; 4]; [5; 6]] in
+  let m2x3 = [[7; 8; 9]; [10; 11; 12]] in
+  print_endline "Matrix A (3x2):";
+  print_int_matrix m3x2;
+  print_endline "Matrix B (2x3):";
+  print_int_matrix m2x3;
+
+  let m3x3_result = mat_mul_mat_n m3x2 m2x3 in
+  print_endline "A × B (should be 3x3):";
+  print_int_matrix m3x3_result;
+
+  (* 3x3 * 3x2 matrix multiplication *)
+  let m3x3 = [[1; 2; 3]; [4; 5; 6]; [7; 8; 9]] in
+  print_endline "Matrix A (3x3):";
+  print_int_matrix m3x3;
+  print_endline "Matrix B (3x2):";
+  print_int_matrix m3x2;
+
+  let m3x2_result = mat_mul_mat_n m3x3 m3x2 in
+  print_endline "A × B (should be 3x2):";
+  print_int_matrix m3x2_result;
+
+  (* Float matrix multiplication *)
+  let mf_2x2_a = [[1.5; 2.5]; [3.5; 4.5]] in
+  let mf_2x2_b = [[5.5; 6.5]; [7.5; 8.5]] in
+  print_endline "Float Matrix A:";
+  print_float_matrix mf_2x2_a;
+  print_endline "Float Matrix B:";
+  print_float_matrix mf_2x2_b;
+
+  let mf_2x2_result = mat_mul_mat_f mf_2x2_a mf_2x2_b in
+  print_endline "A × B:";
+  print_float_matrix mf_2x2_result;
+
+  (* Test dimension mismatch error *)
+  print_endline "Testing matrix multiplication with incompatible dimensions:";
+  print_endline "Matrix A (2x2):";
+  print_int_matrix m2x2_a;
+  print_endline "Matrix B (3x2):";
+  print_int_matrix m3x2;
+
+  try
+    let _ = mat_mul_mat_n m2x2_a m3x2 in
+    print_endline "Error: Should have failed on incompatible dimensions"
+  with Dimension_Mismatch msg ->
+    Printf.printf "Correctly caught error: %s\n\n" msg;
+
