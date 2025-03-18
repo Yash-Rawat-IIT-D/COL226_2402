@@ -1,6 +1,0 @@
-Parsing successful!
-Parsed program:
-boolean x := true
-boolean y := false
-boolean z := (x and y)
-print(z)

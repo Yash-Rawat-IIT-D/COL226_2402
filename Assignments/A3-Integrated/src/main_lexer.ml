@@ -27,10 +27,10 @@ let print_token (tok : token) = match tok with
   | CONS_F f -> Printf.printf "CONS_F(%f)\n" f
   | CONS_B b -> Printf.printf "CONS_B(%b)\n" b
   | IDENT s -> Printf.printf "IDENT(%s)\n" s
-  | CONS_VN (n, v) -> print_endline (string_of_vector_int n v)
-  | CONS_VF (n, v) -> print_endline (string_of_vector_fl n v)
-  | CONS_MN (m, n, mat) -> print_endline (string_of_matrix_int m n mat)
-  | CONS_MF (m, n, mat) -> print_endline (string_of_matrix_fl m n mat)
+  | CONS_VN (n, v) -> token_print_vector_int n v
+  | CONS_VF (n, v) -> token_print_vector_fl n v
+  | CONS_MN (m, n, mat) -> token_print_matrix_int m n mat
+  | CONS_MF (m, n, mat) -> token_print_matrix_fl m n mat
   | NOT -> print_endline "NOT"
   | AND -> print_endline "AND"
   | OR -> print_endline "OR"

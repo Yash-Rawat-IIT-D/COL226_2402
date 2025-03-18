@@ -1,6 +1,0 @@
-Parsing successful!
-Parsed program:
-integer x := 5
-integer y := 10
-integer z := if (x > y) then (x + 5) else if (y > 15) then (y - 5) else (x * y)
-print(z)

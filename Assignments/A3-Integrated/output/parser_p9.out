@@ -1,6 +1,0 @@
-Parsing successful!
-Parsed program:
-integer_matrix m1 := 2 2 [[1, 2], [3, 4]]
-integer_matrix m2 := 2 2 [[5, 6], [7, 8]]
-float_matrix result := ((trp_mat m1) mat_mul m2)
-print(result)

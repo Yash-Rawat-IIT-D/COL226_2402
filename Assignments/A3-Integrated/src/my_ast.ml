@@ -370,55 +370,72 @@ type program = stmt list
                       (* String and Print Utility Functions *)
 (*===================================================================================*)
 
-let print_vector_fl dim vec =
+let print_vector_fl dim vec (as_token : bool) =
   let elements = String.concat ", " (List.map string_of_float vec) in
-  Printf.printf "CONS_VF(%d [%s])\n" dim elements
+  if(as_token)
+  then Printf.printf "CONS_VF(%d [%s])\n" dim elements
+  else Printf.printf "%d [%s]\n" dim elements
 
-let print_matrix_fl dim_m dim_n mat =
+let print_matrix_fl dim_m dim_n mat (as_token : bool) =
       let rows = List.map (fun row -> 
         let elements = String.concat ", " (List.map string_of_float row) in
         Printf.sprintf "[%s]" elements
       ) mat in
-      Printf.printf "CONS_MF(%d %d [%s])\n" (dim_m) (dim_n) (String.concat ", " rows) 
-
-let print_vector_int dim vec =
+      if (as_token)
+      then Printf.printf "CONS_MF(%d %d [%s])\n" (dim_m) (dim_n) (String.concat ", " rows) 
+      else Printf.printf "%d %d [%s]\n" (dim_m) (dim_n) (String.concat ", " rows) 
+let print_vector_int dim vec (as_token : bool) =
   let elements = String.concat ", " (List.map string_of_int vec) in
-  Printf.printf "CONS_VN(%d [%s])\n" dim elements 
+  if (as_token)
+  then Printf.printf "CONS_VN(%d [%s])\n" dim elements
+  else Printf.printf "%d [%s]\n" dim elements 
 
-let print_matrix_int dim_m dim_n mat =
+let print_matrix_int dim_m dim_n mat (as_token : bool) =
     let rows = List.map (fun row -> 
       let elements = String.concat ", " (List.map string_of_int row) in
       Printf.sprintf "[%s]" elements
     ) mat in
-    Printf.printf "CONS_MN(%d %d [%s])\n" (dim_m) (dim_n) (String.concat ", " rows)
+    if (as_token)
+    then Printf.printf "CONS_MN(%d %d [%s])\n" (dim_m) (dim_n) (String.concat ", " rows)
+    else Printf.printf "%d %d [%s]\n" (dim_m) (dim_n) (String.concat ", " rows)
+
+(* Aliasing for printing required in the program and during debugging *)
+let pretty_print_vector_fl dim vec = print_vector_fl dim vec false
+let token_print_vector_fl dim vec = print_vector_fl dim vec true
+
+let pretty_print_vector_int dim vec = print_vector_int dim vec false
+let token_print_vector_int dim vec = print_vector_int dim vec true
+let pretty_print_matrix_fl dim_m dim_n mat = print_matrix_fl dim_m dim_n mat false
+let token_print_matrix_fl dim_m dim_n mat = print_matrix_fl dim_m dim_n mat true
+let pretty_print_matrix_int dim_m dim_n mat = print_matrix_int dim_m dim_n mat false
+let token_print_matrix_int dim_m dim_n mat = print_matrix_int dim_m dim_n mat true
 
 let print_value = function
   | INT_V i -> Printf.printf "%d\n" i
   | FLT_V f -> Printf.printf "%f\n" f
   | BL_V b -> Printf.printf "%b\n" b
-  | NVEC_V v -> print_vector_int (List.length v) v
-  | FVEC_V v -> print_vector_fl (List.length v) v
+  | NVEC_V v -> pretty_print_vector_int (List.length v) v
+  | FVEC_V v -> pretty_print_vector_fl (List.length v) v
   | NMAT_V m -> 
       let rows = List.length m in
       let cols = if rows > 0 then List.length (List.hd m) else 0 in
-      print_matrix_int rows cols m
+      pretty_print_matrix_int rows cols m
   | FMAT_V m -> 
       let rows = List.length m in
       let cols = if rows > 0 then List.length (List.hd m) else 0 in
-      print_matrix_fl rows cols m
+      pretty_print_matrix_fl rows cols m
   | FILE_V s -> Printf.printf "%s"s 
 
-let convert_to_etype = function
-  | T_INT -> E_INT
-  | T_FLOAT -> E_FLOAT
-  | T_BOOL -> E_BOOL
-  | T_VEC_N -> E_VEC_N 0
-  (* Default dimension, will be checked during assignment *)
-  | T_VEC_F -> E_VEC_F 0
-  | T_MAT_N -> E_MAT_N (0, 0)
-  | T_MAT_F -> E_MAT_F (0, 0)
-  | T_INP -> E_INP
-
+let def_val_etype = function
+| E_INT -> VAL(INT_V 1)
+| E_FLOAT -> VAL(FLT_V 1.0)
+| E_BOOL -> VAL(BL_V true)
+| E_VEC_N n -> VAL(NVEC_V  (List.init n (fun _ -> 1)))
+(* Default dimension, will be checked during type checking *)
+| E_VEC_F f -> VAL(FVEC_V  (List.init f (fun _ -> 1.0)))
+| E_MAT_N (r,c)-> VAL(NMAT_V (List.init r (fun _ -> List.init c (fun _ -> 1))))
+| E_MAT_F (r,c)-> VAL(FMAT_V (List.init r (fun _ -> List.init c (fun _ -> 1.0))))
+| E_INP -> VAL(FILE_V "")
 let compatible_types t1 t2 =
   match t1, t2 with
   | E_INT, E_INT | E_FLOAT, E_FLOAT | E_BOOL, E_BOOL -> true
@@ -514,6 +531,28 @@ let string_of_binop op =
   | Scal_Mat -> "scal_m"
   | Mat_Mul_Mat -> "mat_mul"
 
+let err_string_of_binop op = match op with
+  | Add -> "Type mismatch in binary addition (scalars)"
+  | Sub -> "Type mismatch in binary subtraction (scalars)"
+  | Mul -> "Type mismatch in binary multiplication (scalars)"
+  | Div -> "Type mismatch in binary division (scalars)"
+  | Modulo -> "Type mismatch in binary modulo (Expected int expressions)"
+  | And -> "Type mismatch in binary and(&&) (Expected bool expressions)"
+  | Or -> "Type mismatch in binary Or(||) (Expected bool expressions)"
+  | Eq -> "Type mismatch in binary Eq(==) (Expected int expressions)"
+  | Neq -> "Type mismatch in binary Neq(!=) (Expected int expressions)"
+  | Gt -> "Type mismatch in binary Gt(>) (Expected int expressions)"
+  | Lt -> "Type mismatch in binary Lt(<) (Expected bool expressions)"
+  | Geq -> "Type mismatch in binary Geq(>=) (Expected int expressions)"
+  | Leq -> "Type mismatch in binary Leq(==) (Expected int expressions)"
+  | Dot_Prod -> "Type mismatch in binary Dot_Prod (Expected vector of same types !)"
+  | Angle -> "Type mismatch in binary Angle (Expected vector of same types !)"
+  | Add_Vec -> "Type mismatch in binary Add_Vec (Expected vector of same types !)"
+  | Scal_Vec -> "Type mismatch in binary Scal_Vec (Scalar,Vector type expressions expected )"
+  | Add_Mat -> "Type mismatch in binary Add_Mat (Expected matrix of same types !)"
+  | Scal_Mat -> "Type mismatch in binary Scal_Mat (Scalar,Matrix of type expressions expected !)"
+  | Mat_Mul_Mat -> "Type mismatch in binary Mat_mul_Mat (Expected Matrix of same types !)"
+
 (* Convert unary operator to string *)
 let string_of_unop op =
   match op with
@@ -525,6 +564,16 @@ let string_of_unop op =
   | Det -> "det"
   | Inv -> "inv"
 
+let err_string_of_unop op = match op with
+  | Not -> "Type mismatch in unary Not (Expected bool expression)"
+  | Neg -> "Type mismatch in unary Neg (Expected int or float expression)"
+  | Mag_v -> "Type mismatch in unary Mag_v (Expected vector expression)"
+  | Dim -> "Type mismatch in unary Dim (Expected vector or matrix expression)"
+  | Trp_Mat -> "Type mismatch in unary Trp_Mat (Expected matrix expression)"
+  | Det -> "Type mismatch in unary Det (Expected square matrix expression)"
+  | Inv -> "Type mismatch in unary Inv (Expected invertible square matrix expression)"
+
+let string_of_n_tabs (n:int) = String.make n '\t'
 let rec string_of_exp e = match e with
   | IDF s -> s
   | VAL v -> string_of_value v

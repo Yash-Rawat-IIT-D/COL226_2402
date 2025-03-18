@@ -81,10 +81,12 @@ test-parser: $(BUILD_DIR)/parser_test
 # Run all tests
 test: test-lexer test-parser
 
+submission:
+	cp -r . /mnt/c/Users/YASH/Documents/
 # Clean target to remove generated files
 clean:
 	rm -f $(SRC_DIR)/*.cm* $(SRC_DIR)/my_parser.ml $(SRC_DIR)/my_parser.mli $(SRC_DIR)/my_lexer.ml
 	rm -f $(BUILD_DIR)/* $(OUTPUT_DIR)/*
 
 # Phony targets
-.PHONY: all clean test test-lexer test-parser directories
+.PHONY: all clean test test-lexer test-parser directories submission

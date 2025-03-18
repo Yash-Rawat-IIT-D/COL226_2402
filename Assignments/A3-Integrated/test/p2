@@ -1,4 +1,4 @@
 int a := 5;
-int b := 10;
+int b := 4234;
 int max := a > b ? a : b;
 Print(max);

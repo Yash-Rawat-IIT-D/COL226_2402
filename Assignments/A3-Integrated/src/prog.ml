@@ -26,7 +26,7 @@ type environment = env_frame list
 (*===================================================================================*)
 
 (* Variable Lookup *)
-let rec lookup_var v_name env =   
+let rec lookup_var v_name (env : environment) =   
   match env with 
   | [] -> raise(Var_Not_Found("Variable Not Found : " ^ v_name))
   | frame::rest_env ->
@@ -37,7 +37,7 @@ let rec lookup_var v_name env =
     )
 
 (* Check if variable exists in the current scope only *)
-let var_in_frame v_name env = 
+let var_in_frame v_name (env : environment) = 
   match env with
   | [] -> false
   | frame::_ -> List.exists (fun (name, _, _) -> name = v_name) frame
@@ -69,11 +69,11 @@ let define_var v_name v_typ v_val (env :environment) =
 (* ------------------------- Scope Handling ------------------------- *)
 
 (* Pushing Onto Current Scope *)
-let push_scope env =
+let push_scope (env : environment) =
   [] :: env
 
 (* Popping Current Scope *)
-let pop_scope env =
+let pop_scope (env : environment) =
   match env with
   | _ :: rest -> rest
   | [] -> failwith "No scope to pop on stack"
@@ -231,9 +231,132 @@ let pseudo_file_lex input_str typ_opt =
           ))
         else
           VAL (FMAT_V mat)
-    | _, None -> raise (Type_Error "Type annotation required for input")
+    | _, None -> raise (Type_Error "Type annotation required for input from a file")
     | _ -> raise (Type_Error ("Input doesn't match expected type"))
-      
+
+let type_bin_op_num_helper bin_op t1 t2 = match t1 , t2 with 
+  | E_INT, E_INT -> E_INT
+  | E_FLOAT,E_INT | E_INT, E_FLOAT | E_FLOAT, E_FLOAT -> E_FLOAT
+  | _,_ -> raise (Type_Error(err_string_of_binop bin_op))
+
+let type_bin_op_comp_helper bin_op t1 t2 = match t1, t2 with
+  | E_INT, E_INT -> E_BOOL
+  | _,_ -> raise (Type_Error(err_string_of_binop bin_op))
+let type_bin_op_bool_helper bin_op t1 t2 = match t1, t2 with 
+  | E_BOOL, E_BOOL -> E_BOOL
+  | _,_ -> raise (Type_Error(err_string_of_binop bin_op))
+
+let type_add_vec_helper t1 t2 = match t1, t2 with 
+  | E_VEC_N d1, E_VEC_N d2 ->
+    ( if(d1 <> d2) 
+      then raise (Dimension_Mismatch ("Integer Vector addition requires equal dimensions: Found" ^ 
+                                        string_of_int d1 ^ " , " ^ string_of_int d2))
+      else E_VEC_N d1 )
+  | E_VEC_F d1, E_VEC_F d2 -> 
+    ( if(d1 <> d2) 
+      then raise (Dimension_Mismatch ("Float Vector addition requires equal dimensions: Found" ^ 
+                                        string_of_int d1 ^ " , " ^ string_of_int d2))
+      else E_VEC_F d1 )
+  | _,_ -> raise (Type_Error (err_string_of_binop Add_Vec))
+
+let type_dot_prod_helper t1 t2 = match t1, t2 with 
+  | E_VEC_N d1, E_VEC_N d2 ->
+    ( if(d1 <> d2) 
+      then raise (Dimension_Mismatch ("Integer Vector dot product requires equal dimensions: Found" ^ 
+                                        string_of_int d1 ^ " , " ^ string_of_int d2))
+      else E_INT )
+  | E_VEC_F d1, E_VEC_F d2 -> 
+    ( if(d1 <> d2) 
+      then raise (Dimension_Mismatch ("Float Vector dot product requires equal dimensions: Found" ^ 
+                                        string_of_int d1 ^ " , " ^ string_of_int d2))
+      else E_FLOAT)
+  | _,_ -> raise (Type_Error (err_string_of_binop Dot_Prod))
+
+let type_angle_helper t1 t2 = match t1, t2 with
+  | E_VEC_N d1, E_VEC_N d2 ->
+    ( if(d1 <> d2) 
+      then raise (Dimension_Mismatch ("Integer Vector angle requires equal dimensions: Found" ^ 
+                                        string_of_int d1 ^ " , " ^ string_of_int d2))
+      else E_FLOAT)
+  | E_VEC_F d1, E_VEC_F d2 -> 
+    ( if(d1 <> d2) 
+      then raise (Dimension_Mismatch ("Float Vector angle requires equal dimensions: Found" ^ 
+                                        string_of_int d1 ^ " , " ^ string_of_int d2))
+      else E_FLOAT)
+  | _,_ -> raise (Type_Error (err_string_of_binop Angle))
+
+let type_add_mat_helper t1 t2 = match t1, t2 with 
+  | E_MAT_N (r1, c1), E_MAT_N (r2, c2) ->
+    ( if((r1 <> r2 ||c1 <> c2)) 
+      then
+        raise (Dimension_Mismatch ("Integer Matrix addition requires equal dimensions: Found " ^ 
+              string_of_int r1 ^ "x" ^ string_of_int c1 ^ " , " ^ 
+              string_of_int r2 ^ "x" ^ string_of_int c2))   
+      else
+        E_MAT_N (r1,c1))
+  | E_MAT_F (r1, c1), E_MAT_F (r2, c2) ->
+    ( if((r1 <> r2 ||c1 <> c2)) 
+      then
+        raise (Dimension_Mismatch ("Float Matrix addition requires equal dimensions: Found " ^ 
+              string_of_int r1 ^ "x" ^ string_of_int c1 ^ " , " ^ 
+              string_of_int r2 ^ "x" ^ string_of_int c2))   
+      else
+        E_MAT_F (r1,c1))
+  | _,_ -> raise (Type_Error (err_string_of_binop Add_Mat))
+
+let type_mat_mul_mat_helper t1 t2 = match t1, t2 with
+  | E_MAT_N (r1, c1), E_MAT_N (r2, c2) ->
+    ( if(r1 <> c2)
+      then 
+        raise (Dimension_Mismatch ("Integer Matrix multiplication requires compatible dimensions: Found " ^ 
+              string_of_int c1 ^ " columns in first matrix and " ^ 
+              string_of_int r2 ^ " rows in second matrix"))
+      else
+        E_MAT_N (r1, c2))
+  | E_MAT_F (r1, c1), E_MAT_F (r2, c2) ->
+    ( if(r1 <> c2)
+      then 
+        raise (Dimension_Mismatch ("Float Matrix multiplication requires compatible dimensions: Found " ^ 
+              string_of_int c1 ^ " columns in first matrix and " ^ 
+              string_of_int r2 ^ " rows in second matrix"))
+      else
+        E_MAT_F (r1, c2))
+  | _,_ -> raise (Type_Error "Invalid types for matrix multiplication")
+
+let type_inv_helper t = match t with
+  | E_MAT_N (r, c) ->
+    ( if(r <> c)
+      then 
+        raise (Dimension_Mismatch ("Integer Matrix inverse requires square matrix, got dimensions " ^ 
+              string_of_int r ^ "x" ^ string_of_int c))
+      else
+        E_MAT_F(r,c))
+  | E_MAT_F (r, c) -> 
+    ( if(r <> c)
+      then 
+        raise (Dimension_Mismatch ("Float Matrix inverse requires square matrix, got dimensions " ^ 
+              string_of_int r ^ "x" ^ string_of_int c))
+      else
+        E_MAT_F(r,c))
+  | _ -> raise (Type_Error (err_string_of_unop Inv))
+
+let type_det_helper t = match t with
+ | E_MAT_N (r, c) ->
+  ( if(r <> c)
+    then 
+      raise (Dimension_Mismatch ("Integer Matrix Determinant requires square matrix, got " ^ 
+             string_of_int r ^ "x" ^ string_of_int c))
+    else
+      E_INT)
+ | E_MAT_F (r, c) ->
+  ( if(r <> c)
+    then 
+      raise (Dimension_Mismatch ("Float Matrix Determinant requires square matrix, got " ^ 
+              string_of_int r ^ "x" ^ string_of_int c))
+    else
+      E_FLOAT)
+ | _ -> raise (Type_Error (err_string_of_unop Det))
+
 (*===================================================================================*)
                   (* Type Checking and Eval_Expr Implementation *)
 (*===================================================================================*)
@@ -329,108 +452,91 @@ let rec type_of_exp env = function
     )
   (* Binary Operations *)
   | BIN_OP (Add, e1, e2) -> 
-    let t1 = type_of_exp env e1 in
-    let t2 = type_of_exp env e2 in
-    (match t1, t2 with
-     | E_INT, E_INT -> E_INT
-     | E_INT, E_FLOAT | E_FLOAT, E_INT | E_FLOAT, E_FLOAT -> E_FLOAT
-     | _ -> raise (Type_Error "Type mismatch in binary addition"))
+      let t1 = type_of_exp env e1 in
+      let t2 = type_of_exp env e2 in
+      let b_op = Add in 
+      type_bin_op_num_helper b_op t1 t2
 
   | BIN_OP (Sub, e1, e2) ->
       let t1 = type_of_exp env e1 in
       let t2 = type_of_exp env e2 in
-      (match t1, t2 with
-      | E_INT, E_INT -> E_INT
-      | E_INT, E_FLOAT | E_FLOAT, E_INT | E_FLOAT, E_FLOAT -> E_FLOAT
-      | _ -> raise (Type_Error "Type mismatch in binary subtraction"))
+      let b_op = Sub in 
+      type_bin_op_num_helper b_op t1 t2
 
   | BIN_OP (Mul, e1, e2) -> 
       let t1 = type_of_exp env e1 in
       let t2 = type_of_exp env e2 in
-      (match t1, t2 with
-      | E_INT, E_INT -> E_INT
-      | E_INT, E_FLOAT | E_FLOAT, E_INT | E_FLOAT, E_FLOAT -> E_FLOAT
-      | _ -> raise (Type_Error "Type mismatch in binary multiplication"))
+      let b_op = Sub in 
+      type_bin_op_num_helper b_op t1 t2
 
   | BIN_OP (Div, e1, e2) -> 
-      let t1 = type_of_exp env e1 in
-      let t2 = type_of_exp env e2 in
-      (match t1, t2 with
-      | E_INT, E_INT -> E_INT
-      | E_INT, E_FLOAT | E_FLOAT, E_INT | E_FLOAT, E_FLOAT -> E_FLOAT
-      | _ -> raise (Type_Error "Type mismatch in binary division"))
+    let t1 = type_of_exp env e1 in
+    let t2 = type_of_exp env e2 in
+    let b_op = Div in 
+    type_bin_op_num_helper b_op t1 t2 
 
   | BIN_OP (Modulo, e1, e2) ->
       let t1 = type_of_exp env e1 in
       let t2 = type_of_exp env e2 in
       (match t1, t2 with
       | E_INT, E_INT -> E_INT
-      | _ -> raise (Type_Error "Modulo only allowed for integer types"))
+      | _ -> raise (Type_Error (err_string_of_binop Modulo)))
 
   (* Logical Operations *)
-  | BIN_OP (And, e1, e2) | BIN_OP (Or, e1, e2) ->
+  | BIN_OP (And, e1, e2) ->
       let t1 = type_of_exp env e1 in
       let t2 = type_of_exp env e2 in
-      if t1 = E_BOOL && t2 = E_BOOL then E_BOOL
-      else raise (Type_Error "Logical operations require boolean operands")
+      let b_op = And in
+      type_bin_op_bool_helper b_op t1 t2
+
+  | BIN_OP (Or, e1, e2) ->
+      let t1 = type_of_exp env e1 in
+      let t2 = type_of_exp env e2 in
+      let b_op = Or in
+      type_bin_op_bool_helper b_op t1 t2
 
   (* Comparison Operations *)
   | BIN_OP (Eq, e1, e2) | BIN_OP (Neq, e1, e2) ->
       let t1 = type_of_exp env e1 in
       let t2 = type_of_exp env e2 in
-      (match t1, t2 with
-      | E_INT, E_INT | E_FLOAT, E_FLOAT -> E_BOOL
-      | _ -> raise (Type_Error "Equality comparison requires operands of the same numeric type"))
+      let b_op = Eq in
+      type_bin_op_comp_helper b_op t1 t2
 
-  | BIN_OP (Lt, e1, e2) | BIN_OP (Gt, e1, e2) | BIN_OP (Leq, e1, e2) | BIN_OP (Geq, e1, e2) ->
+  | BIN_OP (Lt, e1, e2) ->
       let t1 = type_of_exp env e1 in
       let t2 = type_of_exp env e2 in
-      (match t1, t2 with
-      | E_INT, E_INT | E_FLOAT, E_FLOAT -> E_BOOL
-      | _ -> raise (Type_Error "Comparison requires operands of the same numeric type"))
-
+      let b_op = Lt in
+      type_bin_op_comp_helper b_op t1 t2 
+  | BIN_OP (Gt, e1, e2) ->
+      let t1 = type_of_exp env e1 in
+      let t2 = type_of_exp env e2 in
+      let b_op = Gt in
+      type_bin_op_comp_helper b_op t1 t2
+  | BIN_OP (Leq, e1, e2) ->
+      let t1 = type_of_exp env e1 in
+      let t2 = type_of_exp env e2 in
+      let b_op = Leq in
+      type_bin_op_comp_helper b_op t1 t2
+  | BIN_OP (Geq, e1, e2) ->
+      let t1 = type_of_exp env e1 in
+      let t2 = type_of_exp env e2 in
+      let b_op = Geq in
+      type_bin_op_comp_helper b_op t1 t2
   (* Vector Operations with Dimension Checking *)
   | BIN_OP (Add_Vec, e1, e2) ->
       let t1 = type_of_exp env e1 in
       let t2 = type_of_exp env e2 in
-      (match t1, t2 with
-      | E_VEC_N d1, E_VEC_N d2 when d1 = d2 -> E_VEC_F d1
-      | E_VEC_F d1, E_VEC_F d2 when d1 = d2 -> E_VEC_F d1
-      | E_VEC_N d1, E_VEC_N d2 -> 
-          raise (Dimension_Mismatch ("Vector addition requires equal dimensions: " ^ 
-                  string_of_int d1 ^ " vs " ^ string_of_int d2))
-      | E_VEC_F d1, E_VEC_F d2 -> 
-          raise (Dimension_Mismatch ("Vector addition requires equal dimensions: " ^ 
-                  string_of_int d1 ^ " vs " ^ string_of_int d2))
-      | _ -> raise (Type_Error "Invalid types for vector addition"))
+      type_add_vec_helper t1 t2
 
   | BIN_OP (Dot_Prod, e1, e2) ->
       let t1 = type_of_exp env e1 in
       let t2 = type_of_exp env e2 in
-      (match t1, t2 with
-      | E_VEC_N d1, E_VEC_N d2 when d1 = d2 -> E_FLOAT
-      | E_VEC_F d1, E_VEC_F d2 when d1 = d2 -> E_FLOAT
-      | E_VEC_N d1, E_VEC_N d2 -> 
-          raise (Dimension_Mismatch ("Dot product requires equal dimensions: " ^ 
-                  string_of_int d1 ^ " vs " ^ string_of_int d2))
-      | E_VEC_F d1, E_VEC_F d2 -> 
-          raise (Dimension_Mismatch ("Dot product requires equal dimensions: " ^ 
-                  string_of_int d1 ^ " vs " ^ string_of_int d2))
-      | _ -> raise (Type_Error "Invalid types for dot product"))
+      type_dot_prod_helper t1 t2
 
   | BIN_OP (Angle, e1, e2) ->
       let t1 = type_of_exp env e1 in
       let t2 = type_of_exp env e2 in
-      (match t1, t2 with
-      | E_VEC_N d1, E_VEC_N d2 when d1 = d2 -> E_FLOAT
-      | E_VEC_F d1, E_VEC_F d2 when d1 = d2 -> E_FLOAT
-      | E_VEC_N d1, E_VEC_N d2 -> 
-          raise (Dimension_Mismatch ("Angle calculation requires equal dimensions: " ^ 
-                  string_of_int d1 ^ " vs " ^ string_of_int d2))
-      | E_VEC_F d1, E_VEC_F d2 -> 
-          raise (Dimension_Mismatch ("Angle calculation requires equal dimensions: " ^ 
-                  string_of_int d1 ^ " vs " ^ string_of_int d2))
-      | _ -> raise (Type_Error "Invalid types for angle calculation"))
+      type_angle_helper t1 t2
 
   | BIN_OP (Scal_Vec, e1, e2) ->
       let t1 = type_of_exp env e1 in
@@ -440,109 +546,69 @@ let rec type_of_exp env = function
       | E_FLOAT, E_VEC_N d -> E_VEC_F d
       | E_INT, E_VEC_F d -> E_VEC_F d
       | E_FLOAT, E_VEC_F d -> E_VEC_F d
-      | _ -> raise (Type_Error "Invalid types for scalar-vector multiplication"))
+      | _ -> raise (Type_Error (err_string_of_binop Scal_Vec)))
 
   (* Matrix Operations with Dimension Checking *)
   | BIN_OP (Add_Mat, e1, e2) ->
       let t1 = type_of_exp env e1 in
       let t2 = type_of_exp env e2 in
-      (match t1, t2 with
-      | E_MAT_N (r1, c1), E_MAT_N (r2, c2) when r1 = r2 && c1 = c2 -> E_MAT_F (r1, c1)
-      | E_MAT_F (r1, c1), E_MAT_F (r2, c2) when r1 = r2 && c1 = c2 -> E_MAT_F (r1, c1)
-      | E_MAT_N (r1, c1), E_MAT_N (r2, c2) -> 
-          raise (Dimension_Mismatch ("Matrix addition requires equal dimensions: " ^ 
-                  string_of_int r1 ^ "x" ^ string_of_int c1 ^ " vs " ^ 
-                  string_of_int r2 ^ "x" ^ string_of_int c2))
-      | E_MAT_F (r1, c1), E_MAT_F (r2, c2) -> 
-          raise (Dimension_Mismatch ("Matrix addition requires equal dimensions: " ^ 
-                  string_of_int r1 ^ "x" ^ string_of_int c1 ^ " vs " ^ 
-                  string_of_int r2 ^ "x" ^ string_of_int c2))
-      | _ -> raise (Type_Error "Invalid types for matrix addition"))
+      type_add_mat_helper t1 t2
 
   | BIN_OP (Scal_Mat, e1, e2) ->
       let t1 = type_of_exp env e1 in
       let t2 = type_of_exp env e2 in
       (match t1, t2 with
-      | E_INT, E_MAT_N (r, c) -> E_MAT_N (r, c)
-      | E_FLOAT, E_MAT_N (r, c) -> E_MAT_F (r, c)
-      | E_INT, E_MAT_F (r, c) -> E_MAT_F (r, c)
-      | E_FLOAT, E_MAT_F (r, c) -> E_MAT_F (r, c)
-      | _ -> raise (Type_Error "Invalid types for scalar-matrix multiplication"))
+        | E_INT, E_MAT_N (r, c) -> E_MAT_N (r, c)
+        | E_FLOAT, E_MAT_N (r, c) -> E_MAT_F (r, c)
+        | E_INT, E_MAT_F (r, c) -> E_MAT_F (r, c)
+        | E_FLOAT, E_MAT_F (r, c) -> E_MAT_F (r, c)
+        | _ -> raise (Type_Error (err_string_of_binop Scal_Mat)))
 
   | BIN_OP (Mat_Mul_Mat, e1, e2) ->
       let t1 = type_of_exp env e1 in
       let t2 = type_of_exp env e2 in
-      (match t1, t2 with
-      | E_MAT_N (r1, c1), E_MAT_N (r2, c2) when c1 = r2 -> E_MAT_F (r1, c2)
-      | E_MAT_F (r1, c1), E_MAT_F (r2, c2) when c1 = r2 -> E_MAT_F (r1, c2)
-      | E_MAT_N (r1, c1), E_MAT_N (r2, c2) -> 
-          raise (Dimension_Mismatch ("Matrix multiplication requires compatible dimensions: " ^ 
-                  string_of_int c1 ^ " columns in first matrix vs " ^ 
-                  string_of_int r2 ^ " rows in second matrix"))
-      | E_MAT_F (r1, c1), E_MAT_F (r2, c2) -> 
-          raise (Dimension_Mismatch ("Matrix multiplication requires compatible dimensions: " ^ 
-                  string_of_int c1 ^ " columns in first matrix vs " ^ 
-                  string_of_int r2 ^ " rows in second matrix"))
-      | _ -> raise (Type_Error "Invalid types for matrix multiplication")) 
+      type_mat_mul_mat_helper t1 t2 
   (* Unary Operations *)
   | UN_OP (Not, e) ->
       let t = type_of_exp env e in
       if t = E_BOOL then E_BOOL
-      else raise (Type_Error "NOT operation requires a boolean operand")
+      else raise (Type_Error (err_string_of_unop Not))
 
   | UN_OP (Neg, e) ->
       let t = type_of_exp env e in
       (match t with
        | E_INT -> E_INT
        | E_FLOAT -> E_FLOAT
-       | _ -> raise (Type_Error "Negation requires numeric operand"))
+       | _ -> raise (Type_Error (err_string_of_unop Neg)))
 
   | UN_OP (Mag_v, e) ->
       let t = type_of_exp env e in
       (match t with
        | E_VEC_N n -> E_FLOAT
        | E_VEC_F f -> E_FLOAT
-       | _ -> raise (Type_Error "Magnitude operation requires vector operand"))
+       | _ -> raise (Type_Error (err_string_of_unop Mag_v)))
 
   | UN_OP (Dim, e) ->
       let t = type_of_exp env e in
       (match t with
        | E_VEC_N n -> E_INT
        | E_VEC_F f -> E_INT
-       | _ -> raise (Type_Error "Dimension operation requires vector operand"))
+       | _ -> raise (Type_Error (err_string_of_unop Dim)))
 
   | UN_OP (Trp_Mat, e) ->
       let t = type_of_exp env e in
       (match t with
        | E_MAT_N (r, c) -> E_MAT_N (c, r)  (* Transpose swaps rows and columns *)
        | E_MAT_F (r, c) -> E_MAT_F (c, r)
-       | _ -> raise (Type_Error "Transpose operation requires matrix operand"))
+       | _ -> raise (Type_Error (err_string_of_unop Trp_Mat)))
 
   | UN_OP (Det, e) ->
       let t = type_of_exp env e in
-      (match t with
-       | E_MAT_N (r, c) when r = c -> E_INT  (* Determinant requires square matrix *)
-       | E_MAT_F (r, c) when r = c -> E_FLOAT
-       | E_MAT_N (r, c) -> 
-           raise (Dimension_Mismatch ("Determinant requires square matrix, got " ^ 
-                   string_of_int r ^ "x" ^ string_of_int c))
-       | E_MAT_F (r, c) -> 
-           raise (Dimension_Mismatch ("Determinant requires square matrix, got " ^ 
-                   string_of_int r ^ "x" ^ string_of_int c))
-       | _ -> raise (Type_Error "Determinant operation requires matrix operand"))
+      type_det_helper t
 
   | UN_OP (Inv, e) ->
       let t = type_of_exp env e in
-      (match t with
-       | E_MAT_N (r, c) when r = c -> E_MAT_F (r, c)  (* Inverse requires square matrix *)
-       | E_MAT_F (r, c) when r = c -> E_MAT_F (r, c)
-       | E_MAT_N (r, c) -> 
-           raise (Dimension_Mismatch ("Matrix inverse requires square matrix, got " ^ 
-                   string_of_int r ^ "x" ^ string_of_int c))
-       | E_MAT_F (r, c) -> 
-           raise (Dimension_Mismatch ("Matrix inverse requires square matrix, got " ^ 
-                   string_of_int r ^ "x" ^ string_of_int c))
-       | _ -> raise (Type_Error "Inverse operation requires matrix operand"))
+      type_inv_helper t
 
   (* Conditional Expression *)
   | COND (cond, then_expr, else_expr) ->
@@ -557,13 +623,24 @@ let rec type_of_exp env = function
 
   | Input _ -> E_INP
   
-  | _ -> raise(Undefined_Expression("Given expression is undefined"))
+  | _ -> raise(Undefined_Expression("Given expression is undefined or unimplemented in type checking of exp"))
 
-(* Statement evaluation function *)
+let convert_to_etype exp_typ exp_val = match exp_typ, exp_val with
+  | T_INT  , INT_V _ -> E_INT
+  | T_FLOAT, FLT_V _ -> E_FLOAT
+  | T_BOOL , BL_V _ -> E_BOOL
+  | T_VEC_N, NVEC_V v -> E_VEC_N (vec_dim v)
+  | T_VEC_F, FVEC_V v -> E_VEC_F (vec_dim v)
+  | T_MAT_N, NMAT_V m -> let (row,col) = mat_dim m in E_MAT_N(row,col)
+  | T_MAT_F, FMAT_V m -> let (row,col) = mat_dim m in E_MAT_F(row,col)
+  | _,_ -> raise(Type_Error("Cross Conversion of Incorrect Types !"))
+
+
+(* Statement evaluation function with statement level type checking involved *)
 let rec eval_stmt env = function
   | Assign (typ_opt, id, expr) ->
-      let value = eval_expr env expr in
-      (  match value with
+      let expr_value = eval_expr env expr in
+      (  match expr_value with
           | FILE_V s ->
               (* Handle file input *)
               let input_content = 
@@ -582,7 +659,7 @@ let rec eval_stmt env = function
                 else
                   (* Use explicit type or infer from expression *)
                   match typ_opt with
-                  | Some t -> convert_to_etype t
+                  | Some t -> convert_to_etype t processed_val
                   | None -> raise (Type_Error ("Type annotation required for new variable " ^ id))
               in
               
@@ -593,7 +670,7 @@ let rec eval_stmt env = function
                 raise (Type_Error ("Type mismatch in assignment to " ^ id))
                 
           | _ ->
-              (* Handle normal value *)
+              (* Handle normal expr_value *)
               let expr_type = type_of_exp env expr in
               
               (* Determine expected type *)
@@ -605,13 +682,13 @@ let rec eval_stmt env = function
                 else
                   (* Use explicit type or infer from expression *)
                   match typ_opt with
-                  | Some t -> convert_to_etype t
+                  | Some t -> convert_to_etype t expr_value
                   | None -> raise (Type_Error ("Type annotation required for new variable " ^ id))
               in
               
               (* Check type compatibility and define/update variable *)
               if compatible_types expr_type expected_type then
-                define_var id expected_type value env
+                define_var id expected_type expr_value env
               else
                 raise (Type_Error ("Type mismatch in assignment to " ^ id))
       )        

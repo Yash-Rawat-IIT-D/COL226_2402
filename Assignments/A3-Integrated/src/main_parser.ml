@@ -20,8 +20,30 @@ let parse_file filename =
     print_endline "Parsing successful!";
     print_endline "Parsed program:";
     print_endline (string_of_program ast);
-    
-    ast
+
+
+    (* Execute the program *)
+    print_endline "\nExecuting program...";
+    try
+      let _ = eval_prog ast in
+      print_endline "Program execution completed successfully."
+    with
+    | Type_Error msg ->
+        Printf.fprintf stderr "Type error during execution: %s\n" msg
+    | Var_Not_Found msg ->
+        Printf.fprintf stderr "Runtime error: %s\n" msg
+    | Division_by_zero msg ->
+        Printf.fprintf stderr "Runtime error: %s\n" msg
+    | Dimension_Mismatch msg ->
+        Printf.fprintf stderr "Runtime error: %s\n" msg
+    | Empty_Env msg ->
+        Printf.fprintf stderr "Runtime error: %s\n" msg
+    | Undefined_Var msg ->
+        Printf.fprintf stderr "Runtime error: %s\n" msg
+    | Undefined_Expression msg ->
+        Printf.fprintf stderr "Runtime error: %s\n" msg
+    | e ->
+        Printf.fprintf stderr "Unexpected runtime error: %s\n" (Printexc.to_string e)
   with
   | My_lexer.Illogical_Lex msg ->
       Printf.fprintf stderr "Lexical error: %s\n" msg;
