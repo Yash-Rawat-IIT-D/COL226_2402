@@ -62,10 +62,10 @@
 %left ADD SUB ADD_VEC ADD_MAT
 
 // Multiplication and vector/matrix-specific operations come next 
-%left MUL DIV MODULO SCAL_VEC SCAL_MAT MAT_MUL_MAT DOT_PROD ANGLE_VEC
+%left MUL DIV MODULO SCAL_VEC SCAL_MAT MAT_MUL_MAT DOT_PROD ANGLE_VEC 
 
 // Unary operations have the highest precedence 
-%right NOT NEG MAG_VEC DIM_VEC TRP_MAT DET_MAT INV
+%right ABS NOT NEG MAG_VEC DIM_VEC TRP_MAT DET_MAT INV
 
 %nonassoc THEN
 %nonassoc ELSE_IF
@@ -197,8 +197,10 @@ expr:
   | DIM_VEC expr                 { UN_OP (Dim, $2) }
   | NOT expr                    { UN_OP (Not, $2) }
   | NEG expr                    { UN_OP (Neg, $2) }
+  | SUB expr                    { UN_OP (Neg, $2) }
   | TRP_MAT expr                { UN_OP (Trp_Mat, $2) }
   | DET_MAT expr                    { UN_OP (Det, $2) }
+  | ABS expr                    { UN_OP (Abs, $2) }
   | INV expr                    { UN_OP (Inv, $2) }
   | INPUT LPAREN RPAREN         { Input None }
   | INPUT LPAREN FNAME RPAREN   { Input (Some $3) }

@@ -4,7 +4,7 @@ matrix_n m3 := m1 add_m m2;
 
 Print(m3);
 
-matrix_n m4 := m1 mul_m m2;
+matrix_n m4 := m1 mul_mv m2;
 Print(m4);
 
 matrix_n m5 := transp_m m1;

@@ -1,0 +1,64 @@
+// Inception moment - Adding matrices and doing stuff in my_programming language !
+
+
+// Define two 3x3 matrices
+matrix_n A := 3 3 [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
+matrix_n B := 3 3 [[9, 8, 7], [6, 5, 4], [3, 2, 1]];
+Print(A);
+Print(B);
+
+// Create a result matrix initialized with zeros
+matrix_n C := 3 3 [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+
+// Manually add matrices using indexing
+for (int i := 0; i < 3; i := i + 1;) {
+    for (int j := 0; j < 3; j := j + 1;) {
+        C[i][j] := A[i][j] + B[i][j];
+    }
+}
+
+// Print the result
+Print(C);
+
+// Compare with built-in matrix addition
+matrix_n D := A add_m B;
+Print(D);
+
+// Demonstrate vector indexing
+vector_n v1 := 3 [10, 20, 30];
+vector_n v2 := 3 [5, 15, 25];
+Print(v1);
+Print(v2);
+
+// Create a result vector initialized with zeros
+vector_n v3 := 3 [0, 0, 0];
+
+// Manually add vectors using indexing
+for (int i := 0; i < 3; i := i + 1;) {
+    v3[i] := v1[i] + v2[i];
+}
+
+// Print the result
+Print(v3);
+
+// Compare with built-in vector addition
+vector_n v4 := v1 add_v v2;
+Print(v4);
+
+// Demonstrate matrix row extraction and modification
+vector_n row := A[1];  // Get the second row of matrix A
+Print(row);
+
+// Modify a row and update the matrix
+row[0] := 100;
+A[1] := row;
+Print(A);
+
+// Create a matrix by setting each element
+matrix_n E := 3 3 [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+for (int i := 0; i < 3; i := i + 1;) {
+    for (int j := 0; j < 3; j := j + 1;) {
+        E[i][j] := i * 3 + j + 1;  // Fill with values 1-9
+    }
+}
+Print(E); 

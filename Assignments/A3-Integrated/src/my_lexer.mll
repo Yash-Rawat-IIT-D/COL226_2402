@@ -18,6 +18,7 @@
 	| "vector_f" -> VECTOR_F_T
 	| "matrix_n" -> MATRIX_N_T
 	| "matrix_f" -> MATRIX_F_T
+	| "neg" -> NEG
 	| "not" -> NOT
 	| "and" -> AND
 	| "or" -> OR
@@ -32,7 +33,7 @@
 	| "dim_v" -> DIM_VEC
 	| "add_m" -> ADD_MAT
 	| "scal_m" -> SCAL_MAT
-	| "mul_m" -> MAT_MUL_MAT
+	| "mul_mv" -> MAT_MUL_MAT
 	| "transp_m" -> TRP_MAT
 	| "det_m" -> DET_MAT
 	| "if" -> IF

@@ -78,7 +78,7 @@ let print_token (tok : token) = match tok with
 (* Recursive function to tokenize input *)
 let rec lex_all lexbuf =
   match My_lexer.token lexbuf with
-  | EOF -> ()
+  | EOF -> print_token EOF;
   | tok ->
       print_token tok;
       lex_all lexbuf

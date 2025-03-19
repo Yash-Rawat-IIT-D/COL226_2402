@@ -3,7 +3,10 @@
 int x := 10;
 int y := 5;
 int z := x + y;
+int w := y - x;
 Print(z);
+Print(w);
+Print(abs(w));
 
 // Also these comments are ignored by lexer !!
 

@@ -1,0 +1,104 @@
+// Linear Algebra Operations Demo
+
+// Matrix-Vector Multiplication Example
+// matrix_n A := 3 3 [[2, 1, 3], [4, 0, 1], [0, 2, 5]];
+matrix_n A := 3, 3 [[3, -2, 4], [1, 0, 2], [0, 1, 0]];
+vector_n b := 3 [1, 2, 3];
+Print(A);
+Print(b);
+
+
+// Compute A*b
+vector_n result1 := A mul_mv b;
+Print(result1);
+
+// Vector-Matrix Multiplication
+vector_n c := 3 [2, 1, 3];
+vector_n result2 := c mul_mv A;
+Print(result2);
+
+
+// Matrix Determinant and Inverse
+int det_A := det_m A;
+Print(det_A);            // Determinant of A is 0 for commented case !
+
+matrix_f A_inv := inv A; // Should Throw Error for commented case
+Print(A_inv);
+
+// Verify A * A^-1 = I (identity matrix)
+matrix_f verify := A mul_mv A_inv;
+Print(verify);
+
+// Solving a Linear System Ax = b
+// First convert b to float for compatibility with A_inv
+vector_f b_f := 3 [1.0, 2.0, 3.0];
+vector_f x := A_inv mul_mv b_f;
+Print(x);
+
+// Verify solution: A*x should approximately equal b
+vector_f verify_b := A mul_mv x;
+Print(verify_b);
+
+// Vector Operations
+vector_n v1 := 3 [1, 2, 3];
+vector_n v2 := 3 [4, 5, 6];
+
+// Vector addition
+vector_n v_sum := v1 add_v v2;
+Print(v_sum);
+
+
+// Scalar-vector multiplication
+vector_n v_scaled := 2 scal_v v1;
+Print(v_scaled);
+
+// Dot product
+int dot := v1 dot_v v2;
+Print(dot);
+
+// Vector magnitude
+float mag := mag_v v1;
+Print(mag);
+
+// Angle between vectors (in radians)
+float angle := v1 ang_v v2;
+Print(angle);
+
+// Matrix Operations
+matrix_n M1 := 2 ,2 [[1, 2], [3, 4]];
+matrix_n M2 := 2 ,2 [[5, 6], [7, 8]];
+
+// Matrix addition
+matrix_n M_sum := M1 add_m M2;
+Print(M_sum);
+
+// Matrix multiplication
+matrix_n M_prod := M1 mul_mv M2;
+Print(M_prod);
+
+// Matrix transpose
+matrix_n M_trans := transp_m M1;
+Print(M_trans);
+
+// Reading matrix from file
+// Assuming foo.txt contains a valid matrix definition
+matrix_n file_matrix := Input("foo.txt");
+Print(true);
+Print(file_matrix);
+
+
+// Eigenvalue problem approximation (power method)
+// Initialize a vector
+vector_f v := 3 [1.0, 1.0, 1.0];
+float prev_lambda := 0.0;
+float lambda := 0.0;
+int max_iter := 10;
+int i := 0;
+
+// Convert A to float matrix for better numerical stability
+matrix_f unit_mat_f_3by3 := 3, 3 [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
+// Type Conversion (int->float whenever feasible) is implicit in language's design
+matrix_f A_f := A mul_mv unit_mat_f_3by3;
+
+Print(A_f);
+

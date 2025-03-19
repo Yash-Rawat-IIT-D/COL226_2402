@@ -25,6 +25,76 @@ type environment = env_frame list
                     (* Handling Variable Type and Value Lookup *)
 (*===================================================================================*)
 
+(* Token Printing *)
+let print_token (tok : token) = match tok with
+  | PRINT -> print_endline "PRINT"
+  | INPUT -> print_endline "INPUT"
+  | FNAME s -> Printf.printf "FNAME(%s)\n" s
+  | LPAREN -> print_endline "LPAREN"
+  | RPAREN -> print_endline "RPAREN"
+  | LBRACE -> print_endline "LBRACE"
+  | RBRACE -> print_endline "RBRACE"
+  | LSQUARE -> print_endline "LSQUARE"
+  | RSQUARE -> print_endline "RSQUARE"
+  | INT_T -> print_endline "INT_T"
+  | FLOAT_T -> print_endline "FLOAT_T"
+  | BOOL_T -> print_endline "BOOL_T"
+  | VECTOR_N_T -> print_endline "VECTOR_N_T"
+  | VECTOR_F_T -> print_endline "VECTOR_F_T"
+  | MATRIX_N_T -> print_endline "MATRIX_N_T"
+  | MATRIX_F_T -> print_endline "MATRIX_F_T"
+  | CONS_N n -> Printf.printf "CONS_N(%d)\n" n
+  | CONS_F f -> Printf.printf "CONS_F(%f)\n" f
+  | CONS_B b -> Printf.printf "CONS_B(%b)\n" b
+  | IDENT s -> Printf.printf "IDENT(%s)\n" s
+  | CONS_VN (n, v) -> token_print_vector_int n v
+  | CONS_VF (n, v) -> token_print_vector_fl n v
+  | CONS_MN (m, n, mat) -> token_print_matrix_int m n mat
+  | CONS_MF (m, n, mat) -> token_print_matrix_fl m n mat
+  | NOT -> print_endline "NOT"
+  | AND -> print_endline "AND"
+  | OR -> print_endline "OR"
+  | ADD -> print_endline "ADD"
+  | MUL -> print_endline "MUL"
+  | SUB -> print_endline "SUB"
+  | DIV -> print_endline "DIV"
+  | ABS -> print_endline "ABS"
+  | MODULO -> print_endline "MODULO"
+  | EQ -> print_endline "EQ"
+  | NEQ -> print_endline "NEQ"
+  | LT -> print_endline "LT"
+  | GT -> print_endline "GT"
+  | LE -> print_endline "LE"
+  | GE -> print_endline "GE"
+  | ADD_VEC -> print_endline "ADD_VEC"
+  | SCAL_VEC -> print_endline "SCAL_VEC"
+  | DOT_PROD -> print_endline "DOT_PROD"
+  | ANGLE_VEC -> print_endline "ANGLE_VEC"
+  | MAG_VEC -> print_endline "MAG_VEC"
+  | DIM_VEC -> print_endline "DIM_VEC"
+  | ADD_MAT -> print_endline "ADD_MAT"
+  | SCAL_MAT -> print_endline "SCAL_MAT"
+  | MAT_MUL_MAT -> print_endline "MAT_MUL_MAT"
+  | TRP_MAT -> print_endline "TRP_MAT"
+  | DET_MAT -> print_endline "DET_MAT"
+  | INV -> print_endline "INV"
+  | ASSIGN -> print_endline "ASSIGN"
+  | IF -> print_endline "IF"
+  | THEN -> print_endline "THEN"
+  | ELSE -> print_endline "ELSE"
+  | ELSE_IF -> print_endline "ELSE_IF"
+  | WHILE -> print_endline "WHILE"
+  | FOR -> print_endline "FOR"
+  | BREAK -> print_endline "BREAK"
+  | CONTINUE -> print_endline "CONTINUE"
+  | SEMICOLON -> print_endline "SEMICOLON"
+  | COLON -> print_endline "COLON"
+  | QMARK -> print_endline "QUESTION_MARK"
+  | COMMA -> print_endline "COMMA"
+  | RETURN -> print_endline "RETURN"
+  | EOF -> print_endline "EOF"
+  | _ -> print_endline "Unrecognized Token"
+
 (* Variable Lookup *)
 let rec lookup_var v_name (env : environment) =   
   match env with 
@@ -169,6 +239,8 @@ let mod_helper val1 val2 = match val1, val2 with
 let add_vec_helper val1 val2 = match val1, val2 with
 	| NVEC_V vec1, NVEC_V vec2 -> NVEC_V (add_vec_n vec1 vec2)
 	| FVEC_V vec1, FVEC_V vec2 -> FVEC_V (add_vec_f vec1 vec2)
+  | NVEC_V vec1, FVEC_V vec2 -> FVEC_V (add_vec_f (vec_int_to_float vec1) vec2)
+  | FVEC_V vec1, NVEC_V vec2 -> FVEC_V (add_vec_f vec1 (vec_int_to_float vec2))
 	| _, _ -> raise (Type_Error "Invalid types for vector addition")
 
 let add_mat_helper val1 val2 = match val1, val2 with
@@ -193,17 +265,30 @@ let scal_mat_helper val1 val2 = match val1, val2 with
 let dot_prod_helper val1 val2 = match val1, val2 with
 	| NVEC_V vec1, NVEC_V vec2 -> INT_V (dot_prod_n vec1 vec2)
 	| FVEC_V vec1, FVEC_V vec2 -> FLT_V (dot_prod_f vec1 vec2)
+  | NVEC_V vec1, FVEC_V vec2 -> FLT_V (dot_prod_f (vec_int_to_float vec1) vec2)
+  | FVEC_V vec1, NVEC_V vec2 -> FLT_V (dot_prod_f vec1 (vec_int_to_float vec2))
 	| _, _ -> raise (Type_Error "Invalid types for vector addition")
 
 let angle_helper val1 val2 = match val1, val2 with
 	| NVEC_V vec1, NVEC_V vec2 -> FLT_V (angle_vec_n vec1 vec2)
 	| FVEC_V vec1, FVEC_V vec2 -> FLT_V (angle_vec_f vec1 vec2)
-	| _, _ -> raise (Type_Error "Invalid types for vector addition")		
+	| _, _ -> raise (Type_Error "Invalid types for vector angle")		
 
+(* Involves a lot of type promotion *)
 let mat_mul_mat_helper val1 val2 = match val1, val2 with
 	| NMAT_V m1, NMAT_V m2 -> NMAT_V(mat_mul_mat_n m1 m2)
 	| FMAT_V m1, FMAT_V m2 -> FMAT_V(mat_mul_mat_f m1 m2)
-	| _, _ -> raise (Type_Error "Invalid types for scalar-matrix multiplication")	
+  | NMAT_V m1, FMAT_V m2 -> FMAT_V(mat_mul_mat_f (mat_int_to_float m1) m2) 
+  | FMAT_V m1, NMAT_V m2 -> FMAT_V(mat_mul_mat_f m1 (mat_int_to_float m2))
+  | NMAT_V m1, NVEC_V v1 -> NVEC_V(mat_mul_vec_n m1 v1)
+  | FMAT_V m1, FVEC_V v1 -> FVEC_V(mat_mul_vec_f m1 v1)
+  | NMAT_V m1, FVEC_V v1 -> FVEC_V(mat_mul_vec_f (mat_int_to_float m1) v1)
+  | FMAT_V m1, NVEC_V v1 -> FVEC_V(mat_mul_vec_f m1 (vec_int_to_float v1))
+  | NVEC_V v1, NMAT_V m1 -> NVEC_V(vec_mul_mat_n v1 m1)
+  | FVEC_V v1, FMAT_V m1 -> FVEC_V(vec_mul_mat_f v1 m1)  
+  | NVEC_V v1, FMAT_V m1 -> FVEC_V(vec_mul_mat_f (vec_int_to_float v1) m1)
+  | FVEC_V v1, NMAT_V m1 -> FVEC_V(vec_mul_mat_f v1 (mat_int_to_float m1)) 
+	| _, _ -> raise (Type_Error "Invalid types for vector/matrix multiplication")	
 
 let x_slice_helper (env:environment) (s : string) (i : int) = 
   let (s_etyp,s_val) = lookup_var s env in
@@ -232,54 +317,47 @@ let pseudo_file_lex input_str typ_opt =
   let lexbuf = Lexing.from_string input_str in
   
   (* Get the first token *)
-  let token = My_lexer.token lexbuf in
-  
-  (* Check if there's only one token (plus EOF) *)
-  let second_token = My_lexer.token lexbuf in
-  if second_token <> EOF then
-    raise (Type_Error "Invalid input format: expected a single value (Invalid Input format)")
-  else
-    (* Convert the token to the appropriate value based on the expected type *)
-    match token, typ_opt with
-    | CONS_N n, Some T_INT -> VAL (INT_V n)
-    | CONS_F f, Some T_FLOAT -> VAL (FLT_V f)
-    | CONS_B b, Some T_BOOL -> VAL (BL_V b)
-    | CONS_VN (dim, vec), Some T_VEC_N -> 
+  let token = My_lexer.token lexbuf in (* No EOF since string parsed first !*)
+  match token, typ_opt with
+  | CONS_N n, Some T_INT -> VAL (INT_V n)
+  | CONS_F f, Some T_FLOAT -> VAL (FLT_V f)
+  | CONS_B b, Some T_BOOL -> VAL (BL_V b)
+  | CONS_VN (dim, vec), Some T_VEC_N -> 
+    if not (vec_dim_check dim vec) then
+      raise (Dimension_Mismatch (
+        "Expected vector of dimension " ^ string_of_int dim ^
+        ", but got dimension " ^ string_of_int (vec_dim vec)
+      ))
+    else
+      VAL (NVEC_V vec)
+  | CONS_VF (dim, vec), Some T_VEC_F -> 
       if not (vec_dim_check dim vec) then
         raise (Dimension_Mismatch (
           "Expected vector of dimension " ^ string_of_int dim ^
           ", but got dimension " ^ string_of_int (vec_dim vec)
         ))
       else
-        VAL (NVEC_V vec)
-    | CONS_VF (dim, vec), Some T_VEC_F -> 
-        if not (vec_dim_check dim vec) then
-          raise (Dimension_Mismatch (
-            "Expected vector of dimension " ^ string_of_int dim ^
-            ", but got dimension " ^ string_of_int (vec_dim vec)
-          ))
-        else
-          VAL (FVEC_V vec)
-    | CONS_MN (rows, cols, mat), Some T_MAT_N -> 
-        if not (mat_dim_check rows cols mat) then
-          raise (Dimension_Mismatch (
-            "Expected matrix with " ^ string_of_int rows ^ 
-            " rows and " ^ string_of_int cols ^ 
-            " columns, but found incorrect dimensions"
-          ))
-        else
-          VAL (NMAT_V mat)
-    | CONS_MF (rows, cols, mat), Some T_MAT_F -> 
-        if not (mat_dim_check rows cols mat) then
-          raise (Dimension_Mismatch (
-            "Expected matrix with " ^ string_of_int rows ^ 
-            " rows and " ^ string_of_int cols ^ 
-            " columns, but found inconsistent dimensions"
-          ))
-        else
-          VAL (FMAT_V mat)
-    | _, None -> raise (Type_Error "Type annotation required for input from a file")
-    | _ -> raise (Type_Error ("Input doesn't match expected type"))
+        VAL (FVEC_V vec)
+  | CONS_MN (rows, cols, mat), Some T_MAT_N -> 
+      if not (mat_dim_check rows cols mat) then
+        raise (Dimension_Mismatch (
+          "Expected matrix with " ^ string_of_int rows ^ 
+          " rows and " ^ string_of_int cols ^ 
+          " columns, but found incorrect dimensions"
+        ))
+      else
+        VAL (NMAT_V mat)
+  | CONS_MF (rows, cols, mat), Some T_MAT_F -> 
+      if not (mat_dim_check rows cols mat) then
+        raise (Dimension_Mismatch (
+          "Expected matrix with " ^ string_of_int rows ^ 
+          " rows and " ^ string_of_int cols ^ 
+          " columns, but found inconsistent dimensions"
+        ))
+      else
+        VAL (FMAT_V mat)
+  | _, None -> raise (Type_Error "Type annotation required for input from a file")
+  | _,_ -> raise (Type_Error ("Input from file doesn't match expected type"))
 
 let type_bin_op_num_helper bin_op t1 t2 = match t1 , t2 with 
   | E_INT, E_INT -> E_INT
@@ -304,6 +382,16 @@ let type_add_vec_helper t1 t2 = match t1, t2 with
       then raise (Dimension_Mismatch ("Float Vector addition requires equal dimensions: Found" ^ 
                                         string_of_int d1 ^ " , " ^ string_of_int d2))
       else E_VEC_F d1 )
+  | E_VEC_N d1, E_VEC_F d2 ->
+    ( if(d1 <> d2)
+      then raise (Dimension_Mismatch ("Vector addition requires equal dimensions: Found " ^ 
+                                        string_of_int d1 ^ " , " ^ string_of_int d2))
+      else E_VEC_F d1 )  (* Promote to float vector *)
+  | E_VEC_F d1, E_VEC_N d2 ->
+    ( if(d1 <> d2)
+      then raise (Dimension_Mismatch ("Vector addition requires equal dimensions: Found " ^ 
+                                        string_of_int d1 ^ " , " ^ string_of_int d2))
+      else E_VEC_F d1 )  (* Promote to float vector *)
   | _,_ -> raise (Type_Error (err_string_of_binop Add_Vec))
 
 let type_dot_prod_helper t1 t2 = match t1, t2 with 
@@ -317,6 +405,16 @@ let type_dot_prod_helper t1 t2 = match t1, t2 with
       then raise (Dimension_Mismatch ("Float Vector dot product requires equal dimensions: Found" ^ 
                                         string_of_int d1 ^ " , " ^ string_of_int d2))
       else E_FLOAT)
+  | E_VEC_N d1, E_VEC_F d2 ->
+    ( if(d1 <> d2)
+      then raise (Dimension_Mismatch ("Mixed Vector dot product requires equal dimensions: Found" ^ 
+                                        string_of_int d1 ^ " , " ^ string_of_int d2))
+      else E_FLOAT)  (* Promote to float result *)
+  | E_VEC_F d1, E_VEC_N d2 ->
+      ( if(d1 <> d2)
+        then raise (Dimension_Mismatch ("Mixed Vector dot product requires equal dimensions: Found" ^ 
+                                          string_of_int d1 ^ " , " ^ string_of_int d2))
+      else E_FLOAT)  (* Promote to float result *)
   | _,_ -> raise (Type_Error (err_string_of_binop Dot_Prod))
 
 let type_angle_helper t1 t2 = match t1, t2 with
@@ -368,7 +466,87 @@ let type_mat_mul_mat_helper t1 t2 = match t1, t2 with
               string_of_int r2 ^ " rows in second matrix"))
       else
         E_MAT_F (r1, c2))
-  | _,_ -> raise (Type_Error "Invalid types for matrix multiplication")
+  | E_MAT_N (r1, c1), E_MAT_F (r2, c2) ->
+      ( if(c1 <> r2)
+        then 
+          raise (Dimension_Mismatch ("Mixed Matrix multiplication requires compatible dimensions: Found " ^ 
+                string_of_int c1 ^ " columns in first matrix and " ^ 
+                string_of_int r2 ^ " rows in second matrix"))
+        else
+          E_MAT_F (r1, c2))  (* Result is promoted to float *)
+  | E_MAT_F (r1, c1), E_MAT_N (r2, c2) ->
+      ( if(c1 <> r2)
+        then 
+          raise (Dimension_Mismatch ("Mixed Matrix multiplication requires compatible dimensions: Found " ^ 
+                string_of_int c1 ^ " columns in first matrix and " ^ 
+                string_of_int r2 ^ " rows in second matrix"))
+        else
+          E_MAT_F (r1, c2))  (* Result is promoted to float *)
+  | E_MAT_N (r1, c1), E_VEC_N d2 ->
+    ( if(c1 <> d2)
+      then
+        raise (Dimension_Mismatch ("Integer Matrix-Vector multiplication requires compatible dimensions: Found " ^ 
+              string_of_int c1 ^ " columns in matrix and " ^ 
+              string_of_int d2 ^ " elements in vector"))
+      else
+        E_VEC_N r1)
+  | E_MAT_F (r1, c1), E_VEC_F d2 ->
+    ( if(c1 <> d2)
+      then
+        raise (Dimension_Mismatch ("Float Matrix-Vector multiplication requires compatible dimensions: Found " ^ 
+              string_of_int c1 ^ " columns in matrix and " ^ 
+              string_of_int d2 ^ " elements in vector"))
+      else
+        E_VEC_F r1)
+  | E_MAT_N (r1, c1), E_VEC_F d2 ->
+    ( if(c1 <> d2)
+      then
+        raise (Dimension_Mismatch ("Mixed Matrix-Vector multiplication requires compatible dimensions: Found " ^ 
+              string_of_int c1 ^ " columns in matrix and " ^ 
+              string_of_int d2 ^ " elements in vector"))
+      else
+        E_VEC_F r1)  (* Result is promoted to float *)
+  | E_MAT_F (r1, c1), E_VEC_N d2 ->
+    ( if(c1 <> d2)
+      then
+        raise (Dimension_Mismatch ("Mixed Matrix-Vector multiplication requires compatible dimensions: Found " ^ 
+              string_of_int c1 ^ " columns in matrix and " ^ 
+              string_of_int d2 ^ " elements in vector"))
+      else
+        E_VEC_F r1)  (* Result is promoted to float *)
+  | E_VEC_N d1, E_MAT_N (r2, c2) ->
+    ( if(d1 <> r2)
+      then
+        raise (Dimension_Mismatch ("Integer Vector-Matrix multiplication requires compatible dimensions: Found " ^ 
+              string_of_int d1 ^ " elements in vector and " ^ 
+              string_of_int r2 ^ " rows in matrix"))
+      else
+        E_VEC_N c2)
+  | E_VEC_F d1, E_MAT_F (r2, c2) ->
+    ( if(d1 <> r2)
+      then
+        raise (Dimension_Mismatch ("Float Vector-Matrix multiplication requires compatible dimensions: Found " ^ 
+              string_of_int d1 ^ " elements in vector and " ^ 
+              string_of_int r2 ^ " rows in matrix"))
+      else
+        E_VEC_F c2)
+  | E_VEC_N d1, E_MAT_F (r2, c2) ->
+    ( if(d1 <> r2)
+      then
+        raise (Dimension_Mismatch ("Mixed Vector-Matrix multiplication requires compatible dimensions: Found " ^ 
+              string_of_int d1 ^ " elements in vector and " ^ 
+              string_of_int r2 ^ " rows in matrix"))
+      else
+        E_VEC_F c2)  (* Result is promoted to float *)
+  | E_VEC_F d1, E_MAT_N (r2, c2) ->
+    ( if(d1 <> r2)
+      then
+        raise (Dimension_Mismatch ("Mixed Vector-Matrix multiplication requires compatible dimensions: Found " ^ 
+              string_of_int d1 ^ " elements in vector and " ^ 
+              string_of_int r2 ^ " rows in matrix"))
+      else
+        E_VEC_F c2)  (* Result is promoted to float *)
+  | _,_ -> raise (Type_Error "Invalid types for matrix-vector multiplication")
 
 let type_inv_helper t = match t with
   | E_MAT_N (r, c) ->
@@ -504,6 +682,8 @@ let rec eval_expr env = function
           | Not, BL_V b -> BL_V (not b)
           | Neg, INT_V i -> INT_V (-i)
           | Neg, FLT_V f -> FLT_V (-.f)
+          | Abs, INT_V i -> INT_V (abs i)
+          | Abs, FLT_V f -> FLT_V (abs_float f) 
           | Mag_v, NVEC_V vec -> FLT_V (mag_vec_n vec)
           | Mag_v, FVEC_V vec -> FLT_V (mag_vec_f vec)
           | Dim, NVEC_V vec -> INT_V (vec_dim vec)
@@ -514,7 +694,7 @@ let rec eval_expr env = function
           | Det, FMAT_V mat -> FLT_V (determinant_f mat)
           | Inv, NMAT_V mat -> FMAT_V (inverse_matrix_n mat)
           | Inv, FMAT_V mat -> FMAT_V (inverse_matrix_f mat)
-          | _ -> raise (Type_Error "Type mismatch in unary operation"))
+          | _ -> raise (Type_Error "Type mismatch in unary operation or eval not implemented"))
   
   (* Conditional expression *)
   | COND (cond, then_expr, else_expr) ->
@@ -717,7 +897,13 @@ let rec type_of_exp env = function
   | UN_OP (Inv, e) ->
       let t = type_of_exp env e in
       type_inv_helper t
-
+  
+  | UN_OP (Abs, e) ->
+      let t = type_of_exp env e in 
+      ( match t with
+          | E_INT -> E_INT
+          | E_FLOAT -> E_FLOAT
+          | _ -> raise (Type_Error(err_string_of_unop Abs)))
   (* Conditional Expression *)
   | COND (cond, then_expr, else_expr) ->
       let t_cond = type_of_exp env cond in
@@ -750,19 +936,25 @@ let sl_assign_helper (env:environment) (e1:exp) (e2_etyp : etyp) (e2_val : value
       if not (var_in_env s env)
       then raise (Var_Not_Found("Indexing called on Undefined variable" ^ s))
       else
+        let _ = type_of_exp env e in (* Type Check before eval *)
         let i_val = eval_expr env e in
         match i_val with 
           | INT_V i ->  ( let (lhs_etyp,lhs_val) = lookup_var s env in
                           let var_frame_check = var_in_frame s env in
                           let new_val = (match lhs_etyp,lhs_val,e2_etyp,e2_val with
-                                          | E_VEC_N n1 ,NVEC_V vec, E_INT, INT_V new_val -> NVEC_V (update_vec_n_i vec new_val i)
-
-                                          | E_VEC_F n1    , FVEC_V vec, E_FLOAT, FLT_V new_vaL ->   FVEC_V (update_vec_f_i vec new_vaL i)
+                                          | E_VEC_N n1 , NVEC_V vec, E_INT, INT_V new_val -> NVEC_V (update_vec_n_i vec new_val i)
+                                          | E_VEC_F n1 , FVEC_V vec, E_INT, INT_V new_val -> FVEC_V (update_vec_f_i vec (float_of_int new_val) i)
+                                          | E_VEC_F n1 , FVEC_V vec, E_FLOAT, FLT_V new_vaL ->   FVEC_V (update_vec_f_i vec new_vaL i)
                                           | E_MAT_N(m1,n1), NMAT_V mat, E_VEC_N d, NVEC_V new_row -> 
                                             ( if (d = n1) then  NMAT_V (update_mat_n_i mat new_row i)
                                               else raise(Dimension_Mismatch("Trying to assing a row of dimension "^string_of_int d^
                                                         " to a int matrix of dimension ["^string_of_int m1^","^string_of_int n1^"]"))
                                             )
+                                          | E_MAT_F(m1,n1), FMAT_V mat, E_VEC_N d, NVEC_V new_row ->
+                                            ( if (d = n1) then FMAT_V (update_mat_f_i mat (vec_int_to_float new_row) i)
+                                              else raise(Dimension_Mismatch("Trying to assing a row of dimension "^string_of_int d^
+                                                        " to a float matrix of dimension ["^string_of_int m1^","^string_of_int n1^"]")) 
+                                            ) 
                                           | E_MAT_F(m1,n1), FMAT_V mat, E_VEC_F d, FVEC_V new_row ->
                                             ( if (d = n1) then FMAT_V (update_mat_f_i mat new_row i)
                                               else raise(Dimension_Mismatch("Trying to assing a row of dimension "^string_of_int d^
@@ -780,6 +972,7 @@ let sl_assign_helper (env:environment) (e1:exp) (e2_etyp : etyp) (e2_val : value
       if not (var_in_env s env)
         then raise (Var_Not_Found("Indexing called on Undefined variable" ^ s))
         else
+          let (_,_) = (type_of_exp env e1, type_of_exp env e2) in (* Type Check before evaluation *)
           let i_val = eval_expr env e1 in
           let j_val = eval_expr env e2 in
           match i_val,j_val with
@@ -801,20 +994,32 @@ let sl_assign_helper (env:environment) (e1:exp) (e2_etyp : etyp) (e2_val : value
     )
   | _ -> raise(Type_Error("sl_assign called by a non matrix/vector indexed type expression !")) 
   
-
 (* Statement evaluation function with statement level type checking involved *)
 let rec eval_stmt env = function
   | Assign (typ_opt, id, expr) ->
+      let expr_type = type_of_exp env expr in (* Type Check before evaluation *)
       let expr_value = eval_expr env expr in
       (  match expr_value with
           | FILE_V s ->
               (* Handle file input *)
               let input_content = 
-                if s = "" then (print_string "====> "; flush stdout; read_line()) 
-                else (let ch = open_in s in let content = input_line ch in close_in ch; content)
+                if s = "" then 
+                  (print_string "====> "; flush stdout; read_line()) 
+                else 
+                  (let ch = open_in s in
+                   let rec read_all acc =
+                     try
+                       let line = input_line ch in
+                       read_all (acc ^ line ^ "\n")
+                     with End_of_file ->
+                       close_in ch;
+                       acc
+                   in
+                   let content = read_all "" in
+                   if content = "" then "" else content)
               in
               let processed_exp = pseudo_file_lex input_content typ_opt in
-              let processed_exp_type = type_of_exp env processed_exp in
+              let processed_exp_type = type_of_exp env processed_exp in (* Again Type Check before evaluation *)
               let processed_val = eval_expr env processed_exp in              
               (* Determine expected type *)
               let var_exists = var_in_env id env in
@@ -846,7 +1051,6 @@ let rec eval_stmt env = function
                 raise (Type_Error ("Type mismatch in assignment to " ^ id))
                 
           | _ ->
-            let expr_type = type_of_exp env expr in
             let var_exists = var_in_env id env in
             let var_env_check = var_in_env id env in
             let var_frame_check = var_in_frame id env in

@@ -1,4 +1,4 @@
-// Fibonacci series upto n when taken from input 
+// Fibonacci series upto n (starting from 0) when taken from input 
 
 int n := Input();
 int a := 0;

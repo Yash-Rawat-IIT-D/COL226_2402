@@ -1,21 +1,63 @@
-matrix_n A := 3 3 [[2, 1, 1], [1, 3, 2], [1, 0, 0]];
-vector_n b := 3 [4, 5, 6];
+int x := 10;
+int y := 5;
+int z := 2;
 
-// Compute determinant to check if system is solvable
-int det_A := det_m A;
-if det_A = 0 then {
-    print("System has no unique solution");
-} else {
-    // Compute A^-1
-    matrix_f A_inv := inv A;
-    
-    // Solve x = A^-1 * b
-    vector_f x := A_inv mat_mul b;
-    print("Solution:");
-    print(x);
-    
-    // Verify solution: A * x should equal b
-    vector_f check := A mat_mul x;
-    print("Verification:");
-    print(check);
-}
+// Testing BODMAS rule
+// First test: basic operations
+int result1 := x + y * z;
+Print(result1);  // Should be 20 (10 + 5*2) as multiplication has higher precedence
+
+// Second test: with brackets changing precedence
+int result2 := (x + y) * z;
+Print(result2);  // Should be 30 ((10+5)*2) as brackets have highest precedence
+
+// More complex expression
+int a := 20;
+int b := 4;
+int c := 2;
+int d := 8;
+
+// Testing division and multiplication (same precedence, left-to-right associativity)
+int result3 := a / b * c;
+Print(result3);  // Should be 10 ((20/4)*2 = 5*2 = 10)
+
+// Testing addition and subtraction (same precedence, left-to-right associativity)
+int result4 := a - b + c;
+Print(result4);  // Should be 18 ((20-4)+2 = 16+2 = 18)
+
+// Complex expression with all operations
+int result5 := a + b * c / d - z;
+Print(result5);  // Should be 19 (20 + (4*2)/8 - 2 = 20 + 1 - 2 = 19)
+
+
+// Very complex expression with nested brackets
+int result6 := (a + b) * (c + d) / (z + 1);
+Print(result6);  // Should be 80 ((20+4)*(2+8)/3 = 24*10/3 = 80)
+
+// Testing with modulo
+int result7 := a mod b;
+Print(result7);  // Should be 0 (20 mod 4 = 0)
+
+int result8 := a mod c;
+Print(result8);  // Should be 0 (20 mod 2 = 0)
+
+int result9 := a mod (b - 1);
+Print(result9);  // Should be 2 (20 mod 3 = 2)
+
+
+// Testing with negative numbers
+int result10 := -a + b * c;
+Print(result10);  // Should be -12 (-20 + 4*2 = -20 + 8 = -12)
+
+
+// Test with mixed types (int and float)
+
+float f1 := 5.5;
+float result11 := f1 * y / z;
+
+Print(result11);  // Should be 13.75 (5.5 * 5 / 2 = 27.5 / 2 = 13.75)
+
+// Test with boolean conditions
+bool condition := (a > b) and (c < d);
+
+Print(condition);  // Should print true since 20>4 and 2<8
