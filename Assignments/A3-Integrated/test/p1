@@ -1,4 +1,21 @@
-bool x := true;
-bool y := false;
-bool z := x and y;
-Print(z);
+int i := 0;
+while (i < 10) {
+    Print(i);
+    i := i + 1;
+}
+
+if i = 10 then {
+    Print(true);
+    if i = 11 then {
+        Print(true);
+    } else {
+        Print(false);
+    }
+} else {
+    Print(false);
+}
+
+
+for (int j := 0; j < 5; j := j + 1;) {
+    Print(j * j);
+}

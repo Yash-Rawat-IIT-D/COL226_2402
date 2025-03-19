@@ -493,7 +493,9 @@ let rec eval_expr env = function
         | Mat_Mul_Mat, val1,val2 -> mat_mul_mat_helper val1 val2
         | Dot_Prod, val1, val2 -> dot_prod_helper val1 val2
         | Angle, val1, val2 -> angle_helper val1 val2
-        | _ -> raise (Type_Error "Type mismatch in binary operation"))
+        | _ -> 
+          let _ = print_environment env in
+          raise (Type_Error("Type mismatch in binary operation - "^string_of_binop op^" "^string_of_exp e1^" "^string_of_exp e2)))
 
   (* Unary operations *)
   | UN_OP (op, e) ->
@@ -808,7 +810,7 @@ let rec eval_stmt env = function
           | FILE_V s ->
               (* Handle file input *)
               let input_content = 
-                if s = "" then (print_string "> "; flush stdout; read_line()) 
+                if s = "" then (print_string "====> "; flush stdout; read_line()) 
                 else (let ch = open_in s in let content = input_line ch in close_in ch; content)
               in
               let processed_exp = pseudo_file_lex input_content typ_opt in
@@ -830,13 +832,13 @@ let rec eval_stmt env = function
               if compatible_types processed_exp_type expected_type then
                 if typ_opt <> None then
                   (* This is a variable declaration with type annotation - always create in current scope *)
-                  define_var id expected_type expr_value env
+                  define_var id expected_type processed_val env
                 else if var_frame_check then
                   (* Variable exists in current frame - update it there *)
-                  define_var id expected_type expr_value env
+                  define_var id expected_type processed_val env
                 else if var_env_check then
                   (* Variable exists in outer scope - update it there *)
-                  update_var id expected_type expr_value env
+                  update_var id expected_type processed_val env
                 else
                   (* New variable without type annotation - not allowed *)
                   raise (Type_Error ("Type annotation required for new variable " ^ id))

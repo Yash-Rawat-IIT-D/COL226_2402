@@ -1,4 +1,17 @@
-vector_n v1 := 3 [1, 2, 3];
-vector_n v2 := 3 [4, 5, 6];
-float result := mag_v (v1 add_v v2);
-Print(result);
+// Fibonacci series upto n when taken from input 
+
+int n := Input();
+int a := 0;
+int b := 1;
+int i := 2;
+
+Print(a);
+Print(b);
+
+while i <= n {
+    int c := a + b;
+    Print(c);
+    a := b;
+    b := c;
+    i := i + 1;
+}

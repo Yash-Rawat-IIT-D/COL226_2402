@@ -274,6 +274,69 @@ let inverse_matrix_f mat =
         List.map (fun elem -> elem /. det) row
       ) adj      
 
+(* Convert a 1D vector to a column vector (nx1 matrix) for integers *)
+let vec_to_col_n vec =
+  List.map (fun x -> [x]) vec
+
+(* Convert a 1D vector to a column vector (nx1 matrix) for floats *)
+let vec_to_col_f vec =
+  List.map (fun x -> [x]) vec
+
+(* Convert a column vector (nx1 matrix) to a 1D vector for integers *)
+let col_to_vec_n mat =
+  List.map (fun row -> List.hd row) mat
+
+(* Convert a column vector (nx1 matrix) to a 1D vector for floats *)
+let col_to_vec_f mat =
+  List.map (fun row -> List.hd row) mat
+
+
+(* Matrix-vector multiplication for integer matrices and vectors *)
+let mat_mul_vec_n mat vec =
+  let (rows, cols) = mat_dim mat in
+  if vec_dim vec <> cols then
+    raise (Dimension_Mismatch "Matrix columns must match vector length for multiplication")
+  else
+    let result = List.map (fun row ->
+      List.fold_left (+) 0 (List.map2 ( * ) row vec)
+    ) mat in
+    vec_to_col_n result 
+
+(* Matrix-vector multiplication for float matrices and vectors *)
+let mat_mul_vec_f mat vec =
+  let (rows, cols) = mat_dim mat in
+  if vec_dim vec <> cols then
+    raise (Dimension_Mismatch "Matrix columns must match vector length for multiplication")
+  else
+    let result = List.map (fun row ->
+      List.fold_left (+.) 0.0 (List.map2 ( *. ) row vec)
+    ) mat in
+    vec_to_col_f result
+
+
+  (* Vector-matrix multiplication for integer vectors and matrices *)
+let vec_mul_mat_n vec mat =
+  let (rows, cols) = mat_dim mat in
+  if vec_dim vec <> rows then
+    raise (Dimension_Mismatch "Vector length must match matrix rows for multiplication")
+  else
+    let mat_t = transpose_matrix_n mat in
+    List.map (fun col ->
+      List.fold_left (+) 0 (List.map2 ( * ) vec col)
+    ) mat_t
+
+(* Vector-matrix multiplication for float vectors and matrices *)
+let vec_mul_mat_f vec mat =
+  let (rows, cols) = mat_dim mat in
+  if vec_dim vec <> rows then
+    raise (Dimension_Mismatch "Vector length must match matrix rows for multiplication")
+  else
+    let mat_t = transpose_matrix_f mat in
+    List.map (fun col ->
+      List.fold_left (+.) 0.0 (List.map2 ( *. ) vec col)
+    ) mat_t
+
+
 (* Helper function to print an int matrix *)
 let print_int_matrix mat =
   List.iter (fun row ->
@@ -289,6 +352,24 @@ let print_float_matrix mat =
     print_newline ()
   ) mat;
   print_newline ()
+
+(* Print an integer vector *)
+let print_int_vector vec =
+  Printf.printf "[";
+  if vec_dim vec > 0 then begin
+    Printf.printf "%d" (List.hd vec);
+    List.iter (fun x -> Printf.printf ", %d" x) (List.tl vec)
+  end;
+  Printf.printf "]\n"
+
+(* Print a float vector *)
+let print_float_vector vec =
+  Printf.printf "[";
+  if vec_dim vec > 0 then begin
+    Printf.printf "%.2f" (List.hd vec);
+    List.iter (fun x -> Printf.printf ", %.2f" x) (List.tl vec)
+  end;
+  Printf.printf "]\n"
 
 (* Test cases for matrix operations *)
 let () =
@@ -528,3 +609,27 @@ let () =
   with Dimension_Mismatch msg ->
     Printf.printf "Correctly caught error: %s\n\n" msg;
 
+    print_endline "\n===== MATRIX-VECTOR MULTIPLICATION TESTS =====";
+  
+  (* 2x2 matrix * 2-element vector *)
+  let m2x2 = [[1; 2]; [3; 4]] in
+  let v2 = [5; 6] in
+  print_endline "Matrix (2x2):";
+  print_int_matrix m2x2;
+  print_endline "Vector (2):";
+  print_int_vector v2;
+  
+  let result_mv = mat_mul_vec_n m2x2 v2 in
+  print_endline "Matrix * Vector (column vector result):";
+  print_int_matrix result_mv;
+  
+  (* 3x2 matrix * 2-element vector *)
+  let m3x2 = [[1; 2]; [3; 4]; [5; 6]] in
+  print_endline "Matrix (3x2):";
+  print_int_matrix m3x2;
+  print_endline "Vector (2):";
+  print_int_vector v2;
+  
+  let result_mv2 = mat_mul_vec_n m3x2 v2 in
+  print_endline "Matrix * Vector (should be 3x1):";
+  print_int_matrix result_mv2;

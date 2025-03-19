@@ -1,4 +1,16 @@
-int a := 10;
-vector_n s := 5 [1, 2, 3, 4, 5];
-Print(a);
-Print(s[1]);
+// Basic test for the language
+
+int x := 10;
+int y := 5;
+int z := x + y;
+Print(z);
+
+// Also these comments are ignored by lexer !!
+
+float a := 3.5;
+float b := 2.0;
+float c := a * b;
+Print(c);
+
+bool flag := x > y;
+Print(flag);

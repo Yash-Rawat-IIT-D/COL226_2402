@@ -708,7 +708,7 @@ let rec string_of_stmt = function
   | While (cond, body) ->
       "while " ^ string_of_exp cond ^ " " ^ string_of_stmt body
   | For (init, cond, update, body) ->
-      "for (" ^ string_of_stmt init ^ "; " ^ string_of_exp cond ^ "; " ^ string_of_stmt update ^ ") do " ^ string_of_stmt body
+      "for (" ^ string_of_stmt init ^ "; " ^ string_of_exp cond ^ "; " ^ string_of_stmt update ^ ") " ^ string_of_stmt body
   | Print expr ->
       "print" ^ "(" ^ (string_of_exp expr) ^ ")"
   | Return expr ->
