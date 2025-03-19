@@ -42,6 +42,15 @@ let var_in_frame v_name (env : environment) =
   | [] -> false
   | frame::_ -> List.exists (fun (name, _, _) -> name = v_name) frame
 
+let rec var_in_env v_name (env:environment) = match env with
+  | [] -> false
+  | frame::rest_frames -> 
+    let exists_curr_frame = List.exists (fun (name, _, _) -> name = v_name) frame in
+    if exists_curr_frame then
+      true
+    else
+      var_in_env v_name rest_frames
+
 (* Define or update variable in current scope *)
 let define_var v_name v_typ v_val (env :environment) = 
   match env with
@@ -65,6 +74,31 @@ let define_var v_name v_typ v_val (env :environment) =
     else
       (* Add new binding to current frame *)
       ((v_name, v_typ, v_val) :: frame) :: rest_env
+
+let rec update_var v_name v_typ v_val (env : environment) = 
+  let rec update_var_helper vname vtyp vval = function
+  | [] -> raise (Empty_Env "Empty Environment: No Scope , Variable was not found !")
+  | frame :: rest_env ->
+      let exists = List.exists (fun (name, _, _) -> name = vname) frame in
+      if exists then
+        (* Variable exists in current scope, update it with type checking *)
+        let new_frame = 
+          List.map (fun (name, old_typ, old_val) -> 
+            if name = vname then
+              if compatible_types old_typ vtyp 
+                then (name, vtyp, vval)
+              else 
+                raise (Type_Error ("Cannot redefine variable " ^ vname ^ " with incompatible type"))
+            else 
+              (name, old_typ, old_val)
+          ) frame
+        in
+        new_frame :: rest_env
+      else
+        (* Continue searching in outer scopes *)
+        frame :: update_var_helper vname vtyp vval rest_env
+  in
+    update_var_helper v_name v_typ v_val env
 
 (* ------------------------- Scope Handling ------------------------- *)
 
@@ -166,12 +200,25 @@ let angle_helper val1 val2 = match val1, val2 with
 	| FVEC_V vec1, FVEC_V vec2 -> FLT_V (angle_vec_f vec1 vec2)
 	| _, _ -> raise (Type_Error "Invalid types for vector addition")		
 
-let mat_mul_mat_helper val1 val2 = match val1 val2 with
-	| INT_V s, NMAT_V m -> NMAT_V (scal_n_mat_n s m)
-	| FLT_V s, NMAT_V m -> FMAT_V (scal_f_mat_n s m)
-	| INT_V s, FMAT_V m -> FMAT_V (scal_n_mat_f s m)
-	| FLT_V s, FMAT_V m -> FMAT_V (scal_f_mat_f s m)
+let mat_mul_mat_helper val1 val2 = match val1, val2 with
+	| NMAT_V m1, NMAT_V m2 -> NMAT_V(mat_mul_mat_n m1 m2)
+	| FMAT_V m1, FMAT_V m2 -> FMAT_V(mat_mul_mat_f m1 m2)
 	| _, _ -> raise (Type_Error "Invalid types for scalar-matrix multiplication")	
+
+let x_slice_helper (env:environment) (s : string) (i : int) = 
+  let (s_etyp,s_val) = lookup_var s env in
+    match s_etyp, s_val with 
+      | E_VEC_N n, NVEC_V vec -> INT_V (vec_n_i vec i)
+      | E_VEC_F n, FVEC_V vec -> FLT_V (vec_f_i vec i)
+      | E_MAT_N (m,n), NMAT_V mat -> NVEC_V (mat_n_i mat i)
+      | E_MAT_F (m,n), FMAT_V mat -> FVEC_V (mat_f_i mat i)
+      | _,_ -> raise(Type_Error("Invalid Type : Indexing only allowed by matrix and vectors"))
+let xy_slice_helper (env:environment) (s : string) (i : int) (j :int) = 
+  let (s_etyp,s_val) = lookup_var s env in
+    match s_etyp,s_val with 
+    | E_MAT_N (m,n), NMAT_V mat -> INT_V (mat_n_i_j mat i j)
+    | E_MAT_F (m,n), FMAT_V mat -> FLT_V (mat_f_i_j mat i j)
+    | _,_ -> raise(Type_Error("Invalid Type : Double Indexing only allowed by matrix"))
 
 let read_from_terminal () =
   (* Read from stdin and parse into appropriate value *)
@@ -357,6 +404,38 @@ let type_det_helper t = match t with
       E_FLOAT)
  | _ -> raise (Type_Error (err_string_of_unop Det))
 
+let print_environment (env : environment) =
+( let print_frame frame index =
+    Printf.printf "Frame %d:\n" index;
+    List.iter (fun (name, typ, value) ->
+      Printf.printf "  %s : %s = " name (string_of_etype typ);
+      print_value value;
+      print_newline ()
+    ) frame
+  in
+
+  List.iteri (fun i frame -> 
+    print_frame frame i;
+    if i < List.length env - 1 then print_newline ()
+  ) env )
+
+let type_x_slice_helper (env:environment) (s : string) (e_etyp : etyp) =
+  let (s_etyp,s_val) = lookup_var s env in
+  ( match s_etyp,e_etyp with 
+    | E_VEC_N n, E_INT -> E_INT 
+    | E_VEC_F n, E_INT -> E_FLOAT 
+    | E_MAT_N (m,n), E_INT -> E_VEC_N n 
+    | E_MAT_F (m,n), E_INT -> E_VEC_F n
+    | _,_ -> raise(Type_Mismatch("Invalid Type : Integer Indexing only allowed by matrix and vectors"))
+  )
+let type_xy_slice_helper (env:environment) (s : string) (e1_etyp : etyp) (e2_etyp : etyp)=
+  let (s_etyp,s_val) = lookup_var s env in
+    ( match s_etyp, e1_etyp, e2_etyp with 
+      | E_MAT_N (m,n), E_INT, E_INT -> E_INT 
+      | E_MAT_F (m,n), E_INT, E_INT -> E_FLOAT
+      | _,_,_ -> raise(Type_Mismatch("Invalid Type : Double Integer Indexing only allowed by matrix"))
+    )
+
 (*===================================================================================*)
                   (* Type Checking and Eval_Expr Implementation *)
 (*===================================================================================*)
@@ -372,7 +451,23 @@ let rec eval_expr env = function
          value
        with Var_Not_Found _ -> 
          raise (Undefined_Var ("Undefined variable: " ^ id)))
-
+  
+  | X_Slice(s,e) ->
+    ( let v1 = eval_expr env e in
+      match v1 with
+        | INT_V i -> x_slice_helper env s i
+        | _ -> raise(Type_Error("Indexing Expression must have type : int"))
+    )
+  
+  | XY_Slice(s,e1,e2) ->
+    ( let v1 = eval_expr env e1 in
+      let v2 = eval_expr env e2 in 
+      match v1,v2 with 
+        | INT_V i, INT_V j -> xy_slice_helper env s i j
+        | INT_V i, _ -> raise(Type_Error("Indexing Expression for column must have type : int"))
+        | _, INT_V j -> raise(Type_Error("Indexing Expression for row must have type : int"))
+        | _,_ -> raise(Type_Error("Indexing Expression for row and column must have type : int"))
+    )
   (* Binary operations *)
   | BIN_OP (op, e1, e2) ->
       let v1 = eval_expr env e1 in
@@ -395,6 +490,9 @@ let rec eval_expr env = function
 				| Scal_Vec, val1, val2 -> scal_vec_helper val1 val2
 				| Add_Mat, val1, val2 -> add_mat_helper val1 val2
 				| Scal_Mat, val1, val2 -> scal_mat_helper val1 val2
+        | Mat_Mul_Mat, val1,val2 -> mat_mul_mat_helper val1 val2
+        | Dot_Prod, val1, val2 -> dot_prod_helper val1 val2
+        | Angle, val1, val2 -> angle_helper val1 val2
         | _ -> raise (Type_Error "Type mismatch in binary operation"))
 
   (* Unary operations *)
@@ -430,6 +528,7 @@ let rec eval_expr env = function
       | None -> FILE_V ""
       | Some fname -> FILE_V fname
     )
+ 
 (* Helper function to check type compatibility *)
 let rec type_of_exp env = function
   (* Base cases *)
@@ -450,6 +549,13 @@ let rec type_of_exp env = function
         typ
       with Var_Not_Found _ -> raise (Undefined_Var ("Variable " ^ v ^ " not defined"))
     )
+  | X_Slice(s,e) ->
+      let t = type_of_exp env e in
+      type_x_slice_helper env s t
+  | XY_Slice(s,e1,e2) ->
+      let t1 = type_of_exp env e1 in
+      let t2 = type_of_exp env e2 in
+      type_xy_slice_helper env s t1 t2
   (* Binary Operations *)
   | BIN_OP (Add, e1, e2) -> 
       let t1 = type_of_exp env e1 in
@@ -635,6 +741,64 @@ let convert_to_etype exp_typ exp_val = match exp_typ, exp_val with
   | T_MAT_F, FMAT_V m -> let (row,col) = mat_dim m in E_MAT_F(row,col)
   | _,_ -> raise(Type_Error("Cross Conversion of Incorrect Types !"))
 
+let sl_assign_helper (env:environment) (e1:exp) (e2_etyp : etyp) (e2_val : value) = 
+  match e1 with 
+  | X_Slice(s,e) -> 
+    (
+      if not (var_in_env s env)
+      then raise (Var_Not_Found("Indexing called on Undefined variable" ^ s))
+      else
+        let i_val = eval_expr env e in
+        match i_val with 
+          | INT_V i ->  ( let (lhs_etyp,lhs_val) = lookup_var s env in
+                          let var_frame_check = var_in_frame s env in
+                          let new_val = (match lhs_etyp,lhs_val,e2_etyp,e2_val with
+                                          | E_VEC_N n1 ,NVEC_V vec, E_INT, INT_V new_val -> NVEC_V (update_vec_n_i vec new_val i)
+
+                                          | E_VEC_F n1    , FVEC_V vec, E_FLOAT, FLT_V new_vaL ->   FVEC_V (update_vec_f_i vec new_vaL i)
+                                          | E_MAT_N(m1,n1), NMAT_V mat, E_VEC_N d, NVEC_V new_row -> 
+                                            ( if (d = n1) then  NMAT_V (update_mat_n_i mat new_row i)
+                                              else raise(Dimension_Mismatch("Trying to assing a row of dimension "^string_of_int d^
+                                                        " to a int matrix of dimension ["^string_of_int m1^","^string_of_int n1^"]"))
+                                            )
+                                          | E_MAT_F(m1,n1), FMAT_V mat, E_VEC_F d, FVEC_V new_row ->
+                                            ( if (d = n1) then FMAT_V (update_mat_f_i mat new_row i)
+                                              else raise(Dimension_Mismatch("Trying to assing a row of dimension "^string_of_int d^
+                                                        " to a float matrix of dimension ["^string_of_int m1^","^string_of_int n1^"]")) 
+                                            )
+                                          | _,_,_,_ -> raise(Type_Error("Invalid Indexing Assignment - Values Mismatch"))) in
+                          if(var_frame_check)
+                          then define_var s lhs_etyp new_val env
+                          else update_var s lhs_etyp new_val env
+                        )   
+          | _ -> raise(Type_Error("Indexing Expression must evaluate to an int"))
+    )
+  | XY_Slice(s,e1,e2) -> 
+    (
+      if not (var_in_env s env)
+        then raise (Var_Not_Found("Indexing called on Undefined variable" ^ s))
+        else
+          let i_val = eval_expr env e1 in
+          let j_val = eval_expr env e2 in
+          match i_val,j_val with
+          | INT_V i, INT_V j -> ( let (lhs_etyp,lhs_val) = lookup_var s env in
+                                  let var_frame_check = var_in_frame s env in
+                                  let new_val = (match lhs_etyp,lhs_val,e2_etyp,e2_val with
+                                                  | E_MAT_N(m1,n1), NMAT_V mat, E_INT, INT_V new_val -> NMAT_V (update_mat_n_i_j mat new_val i j)
+                                                    
+                                                  | E_MAT_F(m1,n1), FMAT_V mat, E_FLOAT, FLT_V new_val -> FMAT_V (update_mat_f_i_j mat new_val i j)
+                                                  | _,_,_,_ -> raise(Type_Error("Invalid Indexing Assignment - Values Mismatch"))) in
+                                  if(var_frame_check)
+                                  then define_var s lhs_etyp new_val env
+                                  else update_var s lhs_etyp new_val env
+                                )
+          | _,INT_V j -> raise(Type_Error("Row Indexing Expression must evaluate to an int"))
+          | INT_V i, _ -> raise(Type_Error("Column Indexing Expression must evaluate to an int"))
+          | _,_ -> raise(Type_Error("Row and Column Indexing Expression must evaluate to an int")) 
+
+    )
+  | _ -> raise(Type_Error("sl_assign called by a non matrix/vector indexed type expression !")) 
+  
 
 (* Statement evaluation function with statement level type checking involved *)
 let rec eval_stmt env = function
@@ -651,52 +815,74 @@ let rec eval_stmt env = function
               let processed_exp_type = type_of_exp env processed_exp in
               let processed_val = eval_expr env processed_exp in              
               (* Determine expected type *)
+              let var_exists = var_in_env id env in
+              let var_env_check = var_in_env id env in
+              let var_frame_check = var_in_frame id env in
               let expected_type = 
-                if var_in_frame id env then
-                  (* Get existing type if variable exists *)
+                if var_exists then
                   let (existing_typ, _) = lookup_var id env in
                   existing_typ
                 else
-                  (* Use explicit type or infer from expression *)
                   match typ_opt with
                   | Some t -> convert_to_etype t processed_val
                   | None -> raise (Type_Error ("Type annotation required for new variable " ^ id))
               in
-              
-              (* Check type compatibility and define/update variable *)
               if compatible_types processed_exp_type expected_type then
-                define_var id expected_type processed_val env
+                if typ_opt <> None then
+                  (* This is a variable declaration with type annotation - always create in current scope *)
+                  define_var id expected_type expr_value env
+                else if var_frame_check then
+                  (* Variable exists in current frame - update it there *)
+                  define_var id expected_type expr_value env
+                else if var_env_check then
+                  (* Variable exists in outer scope - update it there *)
+                  update_var id expected_type expr_value env
+                else
+                  (* New variable without type annotation - not allowed *)
+                  raise (Type_Error ("Type annotation required for new variable " ^ id))
               else
                 raise (Type_Error ("Type mismatch in assignment to " ^ id))
                 
           | _ ->
-              (* Handle normal expr_value *)
-              let expr_type = type_of_exp env expr in
-              
-              (* Determine expected type *)
-              let expected_type = 
-                if var_in_frame id env then
-                  (* Get existing type if variable exists *)
-                  let (existing_typ, _) = lookup_var id env in
-                  existing_typ
-                else
-                  (* Use explicit type or infer from expression *)
-                  match typ_opt with
-                  | Some t -> convert_to_etype t expr_value
-                  | None -> raise (Type_Error ("Type annotation required for new variable " ^ id))
-              in
-              
-              (* Check type compatibility and define/update variable *)
-              if compatible_types expr_type expected_type then
-                define_var id expected_type expr_value env
+            let expr_type = type_of_exp env expr in
+            let var_exists = var_in_env id env in
+            let var_env_check = var_in_env id env in
+            let var_frame_check = var_in_frame id env in
+            let expected_type = 
+              if var_exists then
+                let (existing_typ, _) = lookup_var id env in
+                existing_typ
               else
-                raise (Type_Error ("Type mismatch in assignment to " ^ id))
+                match typ_opt with
+                | Some t -> convert_to_etype t expr_value
+                | None -> raise (Type_Error ("Type annotation required for new variable " ^ id))
+            in
+            if compatible_types expr_type expected_type then
+              if typ_opt <> None then
+                (* This is a variable declaration with type annotation - always create in current scope *)
+                define_var id expected_type expr_value env
+              else if var_frame_check then
+                (* Variable exists in current frame - update it there *)
+                define_var id expected_type expr_value env
+              else if var_env_check then
+                (* Variable exists in outer scope - update it there *)
+                update_var id expected_type expr_value env
+              else
+                (* New variable without type annotation - not allowed *)
+                raise (Type_Error ("Type annotation required for new variable " ^ id))
+            else
+              raise (Type_Error ("Type mismatch in assignment to " ^ id))
       )        
   | Print expr ->
       let value = eval_expr env expr in
       print_value value;
       env
-      
+  | Sl_Assign(e1,e2) ->
+    (
+      let e2_typ = type_of_exp env e2 in
+      let e2_val = eval_expr env e2 in 
+      sl_assign_helper env e1 e2_typ  e2_val
+    ) 
   | Return expr ->
       (* Store the return value for later use *)
       (* No Function Calls so not needed *)
@@ -749,7 +935,7 @@ let rec eval_stmt env = function
         | _ -> raise (Type_Error "Condition must evaluate to a boolean")
       in
       loop init_env
-
+  
 (* Evaluate a complete program *)
 let eval_prog prog =
   let env = init_env () in

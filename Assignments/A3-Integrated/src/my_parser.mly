@@ -20,7 +20,8 @@
 %token <int * int list>               CONS_VN                 
 %token <int * float list>             CONS_VF               
 %token <int * int * int list list>    CONS_MN      
-%token <int * int * float list list>  CONS_MF    
+%token <int * int * float list list>  CONS_MF
+
 
 /* Type Tokens for Type Checking */
 %token INT_T FLOAT_T BOOL_T VECTOR_N_T VECTOR_F_T MATRIX_N_T MATRIX_F_T
@@ -164,9 +165,14 @@ constant:
 // Expression Rules
 /*===================================================================================*/
 
+slice_expr:
+  | IDENT LSQUARE expr RSQUARE { X_Slice($1, $3) }
+  | IDENT LSQUARE expr RSQUARE LSQUARE expr RSQUARE { XY_Slice($1, $3, $6) }
+
 expr:
   | constant { $1 }
   | IDENT { IDF($1) }
+  | slice_expr { $1 }
   | expr AND expr               { BIN_OP (And, $1, $3) }
   | expr OR expr                { BIN_OP (Or, $1, $3) }
   | expr ADD expr               { BIN_OP (Add, $1, $3) }
@@ -214,11 +220,12 @@ stmt:
 	| MATRIX_F_T IDENT ASSIGN expr SEMICOLON          { Assign (Some T_MAT_F, $2, $4) }
   // For and While Loops 
 	| WHILE expr stmt 																{ While ($2, $3) }
-	| FOR stmt SEMICOLON expr SEMICOLON stmt stmt 		{ For ($2, $4, $6, $7) }
+	| FOR LPAREN stmt expr SEMICOLON stmt RPAREN stmt  		{ For ($3, $4, $6, $8) }
 	| IF expr THEN stmt                      				  { Ifte ($2, $4, None) }
 	| IF expr THEN stmt ELSE stmt                     { Ifte ($2, $4, Some $6) }
 	// Normal Assignment
-	| IDENT ASSIGN expr SEMICOLON           				  { Assign (None, $1, $3) }										
+	| IDENT ASSIGN expr SEMICOLON           				  { Assign (None, $1, $3) }		
+  | slice_expr ASSIGN expr SEMICOLON                { Sl_Assign ($1, $3) }								
 	| PRINT LPAREN expr RPAREN SEMICOLON              { Print $3 }
   | RETURN expr SEMICOLON                           { Return $2 }
   | BREAK SEMICOLON                                 { Break }

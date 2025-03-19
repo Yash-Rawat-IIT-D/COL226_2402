@@ -1,2 +1,4 @@
 int a := 10;
+vector_n s := 5 [1, 2, 3, 4, 5];
 Print(a);
+Print(s[1]);

@@ -2,3 +2,5 @@ int a := 5 * (10 + 2)/ 2 - 3;
 int b := a * a mod 7;
 bool result := not true and false or true and not false;
 Print(a);
+Print(b);
+Print(result);

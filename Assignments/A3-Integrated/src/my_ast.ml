@@ -35,6 +35,26 @@ let mat_dim mat = match mat with
 let vec_dim_check exp_dim vec =
   List.length vec = exp_dim
 
+let vec_i vec i =   
+  let dim = vec_dim vec in
+  if i < 0 || i >= dim then
+    raise (Dimension_Mismatch ("Vector index out of bounds: " ^ string_of_int i ^ " is not in range [0," ^ string_of_int (dim-1) ^ "]"))
+  else
+    List.nth vec i
+
+let vec_n_i (vec:vector_int) (i:int) = 
+  try
+    vec_i vec i
+  with
+  | Dimension_Mismatch _ -> let dim = vec_dim vec in raise(Dimension_Mismatch("Invalid Indexing into int vector of dimension : " 
+  ^ string_of_int dim ^ ", access index provided :" ^ string_of_int i))
+let vec_f_i (vec:vector_fl) (i:int) = 
+  try
+    vec_i vec i
+  with
+  | Dimension_Mismatch _ -> let dim = vec_dim vec in raise(Dimension_Mismatch("Invalid Indexing into float vector of dimension : " 
+  ^ string_of_int dim ^ ", access index provided :" ^ string_of_int i))
+
 let mat_dim_check exp_rows exp_cols mat =
   let rows = List.length mat in
   if rows <> exp_rows then false
@@ -42,6 +62,88 @@ let mat_dim_check exp_rows exp_cols mat =
     let cols_matched = List.fold_left (fun acc row -> acc && (List.length row = exp_cols)) true mat in
     cols_matched
 
+let mat_i mat i = 
+  let (row,_) = mat_dim mat in
+  if i < 0 || i >= row then
+    raise (Dimension_Mismatch ("Matrix index for Row out of bounds: " ^ string_of_int i ^ " is not in range [0," ^ string_of_int (row-1) ^ "]"))
+  else
+    List.nth mat i
+let mat_n_i (mat : matrix_int) (i:int) = 
+  try 
+    mat_i mat i
+  with
+    | Dimension_Mismatch _ -> let (row,col) = mat_dim mat in raise(Dimension_Mismatch("Invalid Row Indexing into int matrix of dimensions : [" 
+    ^ string_of_int row ^ "," ^ string_of_int col ^ "], access row index provided :" ^ string_of_int i))
+let mat_f_i (mat : matrix_fl) (i:int) = 
+  try 
+    mat_i mat i
+  with
+    | Dimension_Mismatch _ -> let (row,col) = mat_dim mat in raise(Dimension_Mismatch("Invalid Row Indexing into float matrix of dimensions : [" 
+    ^ string_of_int row ^ "," ^ string_of_int col ^ "], access row index provided :" ^ string_of_int i))
+
+let mat_i_j mat i j = 
+  let (row,col) = mat_dim mat in
+  if j < 0 || j >= col then
+    raise (Dimension_Mismatch ("Matrix column index out of bounds: " ^ string_of_int j ^ " is not in range [0," ^ string_of_int (col-1) ^ "]"))
+  else
+    if i < 0 ||  i>= row then
+      raise (Dimension_Mismatch ("Matrix row index out of bounds: " ^ string_of_int i ^ " is not in range [0," ^ string_of_int (row-1) ^ "]"))
+    else
+      List.nth (List.nth mat i) j
+
+let mat_n_i_j (mat : matrix_int) (i:int) (j:int) = 
+  try
+    mat_i_j mat i j
+  with
+  | Dimension_Mismatch s -> 
+    let (m,n) = mat_dim mat in
+    raise(Dimension_Mismatch("Invalid Indexing into int matrix of dimensions : [" 
+    ^ string_of_int m ^ "," ^ string_of_int n ^ "], row index provided :" ^ string_of_int i))
+let mat_f_i_j (mat : matrix_fl) (i:int) (j:int) = 
+  try 
+    mat_i_j mat i j
+  with
+  | Dimension_Mismatch s -> 
+    let (m,n) = mat_dim mat in
+    raise(Dimension_Mismatch("Invalid Indexing into float matrix of dimensions : [" 
+    ^ string_of_int m ^ "," ^ string_of_int n ^ "], row index provided :" ^ string_of_int i)) 
+let update_vec_i dest_vec value i =
+  let len = List.length dest_vec in
+  if i < 0 || i >= len then
+    raise (Dimension_Mismatch ("Vector index out of bounds: " ^ string_of_int i ^ 
+                               " is not in range [0," ^ string_of_int (len - 1) ^ "]"))
+  else
+    List.mapi (fun j x -> if j = i then value else x) dest_vec
+  
+let update_vec_n_i (dest_vec : vector_int) (value: int) (i:int) = update_vec_i dest_vec value i
+let update_vec_f_i (dest_vec : vector_fl) (value: float) (i:int) = update_vec_i dest_vec value i
+let update_mat_i dest_mat row i =
+  let row_count = List.length dest_mat in
+  if i < 0 || i >= row_count then
+    raise (Dimension_Mismatch ("Matrix row index out of bounds: " ^ string_of_int i ^ 
+                               " is not in range [0," ^ string_of_int (row_count - 1) ^ "]"))
+  else
+    List.mapi (fun j r -> if j = i then row else r) dest_mat
+let update_mat_n_i (dest_mat : matrix_int) (row: vector_int) (i:int) = update_mat_i dest_mat row i 
+let update_mat_f_i (dest_mat : matrix_fl) (row: vector_fl) (i:int) = update_mat_i dest_mat row i 
+
+let update_mat_i_j dest_mat value i j =
+  let row_count = List.length dest_mat in
+  if i < 0 || i >= row_count then
+    raise (Dimension_Mismatch ("Matrix row index out of bounds: " ^ string_of_int i ^ 
+                               " is not in range [0," ^ string_of_int (row_count - 1) ^ "]"))
+  else
+    let row = List.nth dest_mat i in
+    let col_count = List.length row in
+    if j < 0 || j >= col_count then
+      raise (Dimension_Mismatch ("Matrix column index out of bounds: " ^ string_of_int j ^ 
+                                 " is not in range [0," ^ string_of_int (col_count - 1) ^ "]"))
+    else
+      let new_row = List.mapi (fun k x -> if k = j then value else x) row in
+      List.mapi (fun k r -> if k = i then new_row else r) dest_mat
+
+let update_mat_n_i_j (dest_mat : matrix_int) (value: int) (i:int) (j:int) = update_mat_i_j dest_mat value i j
+let update_mat_f_i_j (dest_mat : matrix_fl) (value: float) (i:int) (j:int) = update_mat_i_j dest_mat value i j 
 let mag_vec_n v = let sum_of_sq = List.fold_left (fun acc x -> acc + x * x) 0 v in
                   sqrt (float_of_int sum_of_sq)
 
@@ -348,6 +450,8 @@ type un_op = Not | Neg
 type exp =  
   | Input of string option (* Assigning some variable value in current state of program *)
   | IDF of string
+  | X_Slice of string * exp
+  | XY_Slice of string * exp * exp
   | VAL of value
   | BIN_OP of bin_op * exp * exp
   | UN_OP of un_op * exp
@@ -355,6 +459,7 @@ type exp =
 
 type stmt =
   | Assign of typ option * string * exp
+  | Sl_Assign of exp * exp
   | Ifte of exp * stmt * stmt option
   | While of exp * stmt
   | For of stmt * exp * stmt * stmt (* Variable , Initialisation, Condition and Update *)
@@ -577,6 +682,8 @@ let string_of_n_tabs (n:int) = String.make n '\t'
 let rec string_of_exp e = match e with
   | IDF s -> s
   | VAL v -> string_of_value v
+  | X_Slice(s,e) -> s ^ "[" ^ string_of_exp e ^ "]"
+  | XY_Slice(s,e1,e2) -> s ^ "[" ^ string_of_exp e1 ^ "]["^ string_of_exp e2 ^ "]" 
   | BIN_OP (op, e1, e2) ->
       "(" ^ string_of_exp e1 ^ " " ^ string_of_binop op ^ " " ^ string_of_exp e2 ^ ")"
   | UN_OP (op, e) ->
@@ -593,12 +700,13 @@ let rec string_of_stmt = function
         | Some t -> (string_of_type t) ^ " " ^ name ^ " := " ^ string_of_exp expr
         | None -> name ^ " := " ^ string_of_exp expr
     )
+  | Sl_Assign(e1,e2) -> string_of_exp e1 ^ " := " ^ string_of_exp e2
   | Ifte (cond, then_branch, Some else_branch) ->
       "if " ^ string_of_exp cond ^ " then " ^ string_of_stmt then_branch ^ " else " ^ string_of_stmt else_branch
   | Ifte (cond, then_branch, None) ->
       "if " ^ string_of_exp cond ^ " then " ^ string_of_stmt then_branch
   | While (cond, body) ->
-      "while " ^ string_of_exp cond ^ " do " ^ string_of_stmt body
+      "while " ^ string_of_exp cond ^ " " ^ string_of_stmt body
   | For (init, cond, update, body) ->
       "for (" ^ string_of_stmt init ^ "; " ^ string_of_exp cond ^ "; " ^ string_of_stmt update ^ ") do " ^ string_of_stmt body
   | Print expr ->

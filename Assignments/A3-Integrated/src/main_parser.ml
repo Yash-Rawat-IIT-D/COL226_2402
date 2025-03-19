@@ -22,7 +22,7 @@ let parse_file filename =
     print_endline (string_of_program ast);
 
 
-    (* Execute the program *)
+    (* Execute the program
     print_endline "\nExecuting program...";
     try
       let _ = eval_prog ast in
@@ -43,7 +43,8 @@ let parse_file filename =
     | Undefined_Expression msg ->
         Printf.fprintf stderr "Runtime error: %s\n" msg
     | e ->
-        Printf.fprintf stderr "Unexpected runtime error: %s\n" (Printexc.to_string e)
+        Printf.fprintf stderr "Unexpected runtime error: %s\n" (Printexc.to_string e) *)
+    
   with
   | My_lexer.Illogical_Lex msg ->
       Printf.fprintf stderr "Lexical error: %s\n" msg;

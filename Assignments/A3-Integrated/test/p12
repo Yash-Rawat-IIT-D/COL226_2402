@@ -1,0 +1,80 @@
+/* Program to test various language features */
+
+/* Basic arithmetic and assignments */
+// int x := 10;
+// int y := 5;
+// int z := x + y * 2;
+// float a := 3.14;
+// float b := a * 2.0;
+
+// Print(x);
+// Print(y);
+// Print(z);
+// Print(a);
+// Print(b);
+
+/* While loop test */
+// while (x > 0) {
+//     Print(x);
+//     x := x - 1;
+// }
+
+/* For loop test */
+// for (int i := 1; i <= 5; i := i + 1;) {
+//     Print(i);
+// }
+
+// /* Nested loops */
+// for (int i := 1; i <= 3; i := i + 1;) {
+//     for (int j := 1; j <= 3; j := j + 1;) {
+//         Print(i * j);
+//     }
+// }
+
+/* Vector operations */
+// vector_n v1 := 3 [1, 2, 3];
+// vector_n v2 := 3 [4, 5, 6];
+// vector_n v3 := v1 add_v v2;
+// // Print("Vector addition:");
+// Print(v3);
+
+// int dotProduct := v1 dot_v v2;
+// // Print("Dot product:");
+// Print(dotProduct);
+
+// float magnitude := mag_v v1;
+// // Print("Magnitude of v1:");
+// Print(magnitude);
+
+/* Matrix operations */
+matrix_n m1 := 2, 2 [[1, 2], [3, 4]];
+matrix_n m2 := 2, 2 [[5, 6], [7, 8]];
+matrix_n m3 := m1 add_m m2;
+
+// Print("Matrix addition:");
+Print(m3);
+
+matrix_n m4 := m1 mul_m m2;
+// Print("Matrix multiplication:");
+Print(m4);
+
+matrix_n transposed := transp_m m1;
+// Print("Transposed matrix:");
+Print(transposed);
+
+/* Scoping test */
+int scope_test := 100;
+{
+    int scope_test := 200;
+    // Print("Inner scope value:");
+    Print(scope_test);
+    {
+        int scope_test := 300;
+        // Print("Innermost scope value:");
+        Print(scope_test);
+    }
+    // Print("Back to inner scope:");
+    Print(scope_test);
+}
+// Print("Outer scope value:");
+Print(scope_test);
