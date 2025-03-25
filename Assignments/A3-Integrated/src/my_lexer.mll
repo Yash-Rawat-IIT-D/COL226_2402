@@ -45,6 +45,10 @@
 	| "break" -> BREAK
 	| "return" -> RETURN
 	| "continue" -> CONTINUE
+	| "def_vn" -> DEF_VN
+	| "def_vf" -> DEF_VF
+	| "def_mn" -> DEF_MN
+	| "def_mf" -> DEF_MF
 	| _ -> IDENT s
 
 	(* Helper function to convert string to vector *)
@@ -153,6 +157,7 @@ rule token = parse
 	| (int_reg as mdim) w_space* ','? w_space* (int_reg as ndim) w_space* (w_space+|bsln_reg) w_space* (mat_n_reg as matn) {let mat = str_to_mat_n matn in CONS_MN (int_of_string mdim, int_of_string ndim, mat)}
 	| (int_reg as vdim) w_space+ (vec_f_reg as vecf) {let vec = str_to_vec_f vecf in CONS_VF (int_of_string vdim, vec)}
 	| (int_reg as mdim) w_space* ','? w_space* (int_reg as ndim) w_space* (w_space+|bsln_reg) w_space* (mat_f_reg as matf) {let mat = str_to_mat_f matf in CONS_MF (int_of_string mdim, int_of_string ndim, mat)}
+	(* Handling Operations and Comparisons *) 
 	(* Handling Brackets and Braces *)
 	| '(' { LPAREN }
 	| ')' { RPAREN }

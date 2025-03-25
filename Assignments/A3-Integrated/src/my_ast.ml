@@ -28,9 +28,27 @@ exception Non_Invertible_Mat of string
 (*===================================================================================*)
 
 let vec_dim vec = List.length vec
+
+let def_vec_n (v:int) = match v with
+| 0 -> raise(Dimension_Mismatch("Vector's Of Integer Cannot have zero dimension"))
+| dim -> List.init dim (fun _ -> 0)
+
+let def_vec_f (v:int) = match v with
+| 0 -> raise(Dimension_Mismatch("Vector's Of Floats Cannot have zero dimension"))
+| dim -> List.init dim (fun _ -> 0.0)
+
+
 let mat_dim mat = match mat with 
   | [] -> raise (Dimension_Mismatch ("Empty Matrix not allowed"))
   | row::_ -> (List.length mat, List.length row)
+
+let def_mat_n (m:int) (n:int) = match m, n with
+| 0, _ | _, 0 -> raise(Dimension_Mismatch("Matrix of Integers Cannot have zero rows or columns"))
+| rows, cols -> List.init rows (fun _ -> List.init cols (fun _ -> 0))
+
+let def_mat_f (m:int) (n:int) = match m, n with
+| 0, _ | _, 0 -> raise(Dimension_Mismatch("Matrix of Floats Cannot have zero rows or columns"))
+| rows, cols -> List.init rows (fun _ -> List.init cols (fun _ -> 0.0))
 
 let vec_dim_check exp_dim vec =
   List.length vec = exp_dim
@@ -507,11 +525,12 @@ type bin_op =
   | Modulo | Eq | Neq | Geq | Leq | Gt | Lt 
   | Dot_Prod | Angle | Add_Vec | Scal_Vec 
   | Add_Mat  | Scal_Mat  | Mat_Mul_Mat 
+  | Def_mn | Def_mf
 
 (* Unary Operators *)
   
 type un_op = Not | Neg 
-  | Mag_v | Dim | Trp_Mat | Det | Inv | Abs
+  | Mag_v | Dim | Trp_Mat | Det | Inv | Abs | Def_vn | Def_vf
 
 (* AST for the Expressions *)
 type exp =  
@@ -608,6 +627,17 @@ let def_val_etype = function
 | E_MAT_N (r,c)-> VAL(NMAT_V (List.init r (fun _ -> List.init c (fun _ -> 1))))
 | E_MAT_F (r,c)-> VAL(FMAT_V (List.init r (fun _ -> List.init c (fun _ -> 1.0))))
 | E_INP -> VAL(FILE_V "")
+
+let def_typ_val = function
+| INT_V _ -> T_INT
+| FLT_V _ -> T_FLOAT
+| BL_V _ -> T_BOOL
+| NMAT_V(_) -> T_MAT_N
+| FMAT_V(_) -> T_MAT_F
+| NVEC_V(_) -> T_VEC_N
+| FVEC_V(_) -> T_VEC_F
+| FILE_V(_) -> T_INP
+
 let compatible_types t1 t2 =
   match t1, t2 with
   | E_INT, E_INT | E_FLOAT, E_FLOAT | E_BOOL, E_BOOL -> true
@@ -702,6 +732,8 @@ let string_of_binop op =
   | Add_Mat -> "add_m"
   | Scal_Mat -> "scal_m"
   | Mat_Mul_Mat -> "mat_mul"
+  | Def_mf -> "def_mf"
+  | Def_mn -> "def_nf"
 
 let err_string_of_binop op = match op with
   | Add -> "Type mismatch in binary addition (scalars)"
@@ -724,7 +756,8 @@ let err_string_of_binop op = match op with
   | Add_Mat -> "Type mismatch in binary Add_Mat (Expected matrix of same types !)"
   | Scal_Mat -> "Type mismatch in binary Scal_Mat (Scalar,Matrix of type expressions expected !)"
   | Mat_Mul_Mat -> "Type mismatch in binary Mat_mul_Mat (Expected Matrix of same types !)"
-
+  | Def_mn -> "Type mismatch in binary def_mn (Expected int expressions of non-negative types !)"
+  | Def_mf -> "Type mismatch in binary def_mf (Expected int expressions of non-negative types !)"
 (* Convert unary operator to string *)
 let string_of_unop op =
   match op with
@@ -736,6 +769,8 @@ let string_of_unop op =
   | Det -> "det"
   | Inv -> "inv"
   | Abs -> "abs"
+  | Def_vf -> "def_vf"
+  | Def_vn -> "def_vn"
 
 let err_string_of_unop op = match op with
   | Not -> "Type mismatch in unary Not (Expected bool expression)"
@@ -746,6 +781,8 @@ let err_string_of_unop op = match op with
   | Det -> "Type mismatch in unary Det (Expected square matrix expression)"
   | Inv -> "Type mismatch in unary Inv (Expected invertible square matrix expression)"
   | Abs -> "Type mismatch in unary Abs (Expected int or float)"
+  | Def_vn -> "Type mismatch in unary Def_vn (Expected int expression)"
+  | Def_vf -> "Type mismatch in unary Def_vf (Expected int expression)"
 
 let string_of_n_tabs (n:int) = String.make n '\t'
 let rec string_of_exp e = match e with

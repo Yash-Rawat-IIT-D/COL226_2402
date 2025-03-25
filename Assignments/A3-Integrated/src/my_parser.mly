@@ -22,6 +22,11 @@
 %token <int * int * int list list>    CONS_MN      
 %token <int * int * float list list>  CONS_MF
 
+%token DEF_VN
+%token DEF_VF
+%token DEF_MN
+%token DEF_MF
+
 
 /* Type Tokens for Type Checking */
 %token INT_T FLOAT_T BOOL_T VECTOR_N_T VECTOR_F_T MATRIX_N_T MATRIX_F_T
@@ -65,7 +70,7 @@
 %left MUL DIV MODULO SCAL_VEC SCAL_MAT MAT_MUL_MAT DOT_PROD ANGLE_VEC 
 
 // Unary operations have the highest precedence 
-%right ABS NOT NEG MAG_VEC DIM_VEC TRP_MAT DET_MAT INV
+%right ABS NOT NEG MAG_VEC DIM_VEC TRP_MAT DET_MAT INV DEF_VF DEF_VN DEF_MF DEF_MN
 
 %nonassoc THEN
 %nonassoc ELSE_IF
@@ -122,7 +127,6 @@ constant:
       else
           VAL (NVEC_V v)
   }
-
   | CONS_VF { 
       let (dim, v) = $1 in
       if not (vec_dim_check dim v) then
@@ -133,7 +137,6 @@ constant:
       else
           VAL (FVEC_V v)
   }
-
   | CONS_MN { 
       let (rows, cols, m) = $1 in
       if not (mat_dim_check rows cols m) then
@@ -145,7 +148,6 @@ constant:
       else
           VAL (NMAT_V m)
   }
-
   | CONS_MF { 
       let (rows, cols, m) = $1 in
       if not (mat_dim_check rows cols m) then
@@ -169,23 +171,24 @@ slice_expr:
   | IDENT LSQUARE expr RSQUARE { X_Slice($1, $3) }
   | IDENT LSQUARE expr RSQUARE LSQUARE expr RSQUARE { XY_Slice($1, $3, $6) }
 
+
 expr:
   | constant { $1 }
   | IDENT { IDF($1) }
   | slice_expr { $1 }
-  | expr AND expr               { BIN_OP (And, $1, $3) }
-  | expr OR expr                { BIN_OP (Or, $1, $3) }
-  | expr ADD expr               { BIN_OP (Add, $1, $3) }
-  | expr SUB expr               { BIN_OP (Sub, $1, $3) }
-  | expr MUL expr               { BIN_OP (Mul, $1, $3) }
-  | expr DIV expr               { BIN_OP (Div, $1, $3) }
-  | expr MODULO expr            { BIN_OP (Modulo, $1, $3) }
-  | expr EQ expr                { BIN_OP (Eq, $1, $3) }
-  | expr NEQ expr               { BIN_OP (Neq, $1, $3) }
-  | expr LT expr                { BIN_OP (Lt, $1, $3) }
-  | expr GT expr                { BIN_OP (Gt, $1, $3) }
-  | expr LE expr                { BIN_OP (Leq, $1, $3) }
-  | expr GE expr                { BIN_OP (Geq, $1, $3) }
+  | expr AND expr                { BIN_OP (And, $1, $3) }
+  | expr OR expr                 { BIN_OP (Or, $1, $3) }
+  | expr ADD expr                { BIN_OP (Add, $1, $3) }
+  | expr SUB expr                { BIN_OP (Sub, $1, $3) }
+  | expr MUL expr                { BIN_OP (Mul, $1, $3) }
+  | expr DIV expr                { BIN_OP (Div, $1, $3) }
+  | expr MODULO expr             { BIN_OP (Modulo, $1, $3) }
+  | expr EQ expr                 { BIN_OP (Eq, $1, $3) }
+  | expr NEQ expr                { BIN_OP (Neq, $1, $3) }
+  | expr LT expr                 { BIN_OP (Lt, $1, $3) }
+  | expr GT expr                 { BIN_OP (Gt, $1, $3) }
+  | expr LE expr                 { BIN_OP (Leq, $1, $3) }
+  | expr GE expr                 { BIN_OP (Geq, $1, $3) }
   | expr SCAL_VEC expr           { BIN_OP (Scal_Vec, $1, $3) }
   | expr SCAL_MAT expr           { BIN_OP (Scal_Mat, $1, $3) }
   | expr ADD_VEC expr            { BIN_OP (Add_Vec, $1, $3) }
@@ -193,19 +196,23 @@ expr:
   | expr MAT_MUL_MAT expr        { BIN_OP (Mat_Mul_Mat, $1, $3) }
   | expr DOT_PROD expr           { BIN_OP (Dot_Prod, $1, $3) }
   | expr ANGLE_VEC expr          { BIN_OP (Angle, $1, $3) }
+  | expr DEF_MN expr             { BIN_OP (Def_mn, $1, $3) }
+  | expr DEF_MF expr             { BIN_OP (Def_mf, $1, $3) }
+  | DEF_VN expr                  { UN_OP (Def_vn, $2) }
+  | DEF_VF expr                  { UN_OP (Def_vf, $2) }
   | MAG_VEC expr                 { UN_OP (Mag_v, $2) }
   | DIM_VEC expr                 { UN_OP (Dim, $2) }
-  | NOT expr                    { UN_OP (Not, $2) }
-  | NEG expr                    { UN_OP (Neg, $2) }
-  | SUB expr                    { UN_OP (Neg, $2) }
-  | TRP_MAT expr                { UN_OP (Trp_Mat, $2) }
-  | DET_MAT expr                    { UN_OP (Det, $2) }
-  | ABS expr                    { UN_OP (Abs, $2) }
-  | INV expr                    { UN_OP (Inv, $2) }
-  | INPUT LPAREN RPAREN         { Input None }
-  | INPUT LPAREN FNAME RPAREN   { Input (Some $3) }
-  | expr QMARK expr COLON expr  { COND ($1, $3, $5) }
-  | LPAREN expr RPAREN          { $2 }
+  | NOT expr                     { UN_OP (Not, $2) }
+  | NEG expr                     { UN_OP (Neg, $2) }
+  | SUB expr                     { UN_OP (Neg, $2) }
+  | TRP_MAT expr                 { UN_OP (Trp_Mat, $2) }
+  | DET_MAT expr                 { UN_OP (Det, $2) }
+  | ABS expr                     { UN_OP (Abs, $2) }
+  | INV expr                     { UN_OP (Inv, $2) }
+  | INPUT LPAREN RPAREN          { Input None }
+  | INPUT LPAREN FNAME RPAREN    { Input (Some $3) }
+  | expr QMARK expr COLON expr   { COND ($1, $3, $5) }
+  | LPAREN expr RPAREN           { $2 }
 ;
 
 /*===================================================================================*/

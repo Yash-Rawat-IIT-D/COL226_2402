@@ -73,6 +73,10 @@ let print_token (tok : token) = match tok with
   | COMMA -> print_endline "COMMA"
   | RETURN -> print_endline "RETURN"
   | EOF -> print_endline "EOF"
+  | DEF_VN -> print_endline "DEF_VN"
+  | DEF_VF -> print_endline "DEF_VF"
+  | DEF_MN -> print_endline "DEF_MN"
+  | DEF_MF -> print_endline "DEF_MF"
   | _ -> print_endline "Unrecognized Token"
 
 (* Recursive function to tokenize input *)

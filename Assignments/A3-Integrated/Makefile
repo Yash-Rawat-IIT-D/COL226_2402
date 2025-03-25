@@ -13,8 +13,8 @@ OUTPUT_DIR = output
 # Flags
 OCAMLFLAGS = -I $(SRC_DIR)
 
-# Default target - build lexer_test, parser_test
-all: directories $(BUILD_DIR)/lexer_test $(BUILD_DIR)/parser_test
+# Default target - build lexer_test, prog_test
+all: directories $(BUILD_DIR)/lexer_test $(BUILD_DIR)/prog_test
 
 # Create necessary directories
 directories:
@@ -61,7 +61,7 @@ $(BUILD_DIR)/lexer_test: $(SRC_DIR)/my_ast.cmo $(SRC_DIR)/my_parser.cmo $(SRC_DI
 	$(OCAMLC) $(OCAMLFLAGS) -o $@ $^
 
 # Build parser test executable
-$(BUILD_DIR)/parser_test: $(SRC_DIR)/my_ast.cmo $(SRC_DIR)/my_parser.cmo $(SRC_DIR)/my_lexer.cmo $(SRC_DIR)/prog.cmo $(SRC_DIR)/main_parser.cmo
+$(BUILD_DIR)/prog_test: $(SRC_DIR)/my_ast.cmo $(SRC_DIR)/my_parser.cmo $(SRC_DIR)/my_lexer.cmo $(SRC_DIR)/prog.cmo $(SRC_DIR)/main_parser.cmo
 	$(OCAMLC) $(OCAMLFLAGS) -o $@ $^
 
 # Run lexer tests
@@ -75,10 +75,10 @@ test-lexer: $(BUILD_DIR)/lexer_test
 		$(BUILD_DIR)/lexer_test $$t > $(OUTPUT_DIR)/lexer_`basename $$t`.out; \
 	done
 # Run parser tests
-test-parser: $(BUILD_DIR)/parser_test
+test-parser: $(BUILD_DIR)/prog_test
 	@for t in test/p*; do \
 		echo "Testing parser on $$t"; \
-		$(BUILD_DIR)/parser_test $$t > $(OUTPUT_DIR)/parser_`basename $$t`.out; \
+		$(BUILD_DIR)/prog_test $$t > $(OUTPUT_DIR)/parser_`basename $$t`.out; \
 	done
 
 # Run all tests

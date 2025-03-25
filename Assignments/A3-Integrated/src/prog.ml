@@ -19,6 +19,7 @@ open My_parser
 type env_frame = (string * etyp * value) list 
 type environment = env_frame list
 
+exception File_Error of string
 (*===================================================================================*)
 
 (*===================================================================================*)
@@ -93,6 +94,10 @@ let print_token (tok : token) = match tok with
   | COMMA -> print_endline "COMMA"
   | RETURN -> print_endline "RETURN"
   | EOF -> print_endline "EOF"
+  | DEF_MF -> print_endline "DEF_MF"
+  | DEF_MN -> print_endline "DEF_MN"
+  | DEF_VN -> print_endline "DEF_VN"
+  | DEF_VF -> print_endline "DEF_VF"
   | _ -> print_endline "Unrecognized Token"
 
 (* Variable Lookup *)
@@ -135,7 +140,8 @@ let define_var v_name v_typ v_val (env :environment) =
             if compatible_types old_typ v_typ 
               then (name, v_typ, v_val)
             else 
-              raise (Type_Error("Cannot redefine variable " ^ v_name ^ " with incompatible type"))
+              raise (Type_Error("Cannot redefine variable " ^ v_name ^ "of type " 
+              ^ (string_of_etype old_typ) ^ " with incompatible type :" ^(string_of_etype v_typ)))
           else 
             (name, old_typ, old_val)
         ) frame
@@ -158,7 +164,8 @@ let rec update_var v_name v_typ v_val (env : environment) =
               if compatible_types old_typ vtyp 
                 then (name, vtyp, vval)
               else 
-                raise (Type_Error ("Cannot redefine variable " ^ vname ^ " with incompatible type"))
+                raise (Type_Error("Cannot redefine variable " ^ v_name ^ "of type " 
+              ^ (string_of_etype old_typ) ^ " with incompatible type :" ^(string_of_etype v_typ)))
             else 
               (name, old_typ, old_val)
           ) frame
@@ -195,7 +202,7 @@ let add_helper val1 val2 = match val1, val2 with
   | FLT_V f1, FLT_V f2 -> FLT_V (f1 +. f2)
   | INT_V i1, FLT_V f2 -> FLT_V ((float_of_int i1) +. f2) (* Supporting type promotion *) 
   | FLT_V f1, INT_V i2 -> FLT_V (f1 +. (float_of_int i2))
-  | _,_ -> raise (Type_Error "Invalid type of values for Add (Scalar Addition)")
+  | _,_ -> raise (Type_Error "Invalid type of values for Add (Scalar Addition) - Only Floats and Integers Supported")
 
 (* Helper function for subtraction *)
 let sub_helper val1 val2 = match val1, val2 with
@@ -203,7 +210,7 @@ let sub_helper val1 val2 = match val1, val2 with
   | FLT_V f1, FLT_V f2 -> FLT_V (f1 -. f2)
   | INT_V i1, FLT_V f2 -> FLT_V ((float_of_int i1) -. f2) (* Supporting type promotion *)
   | FLT_V f1, INT_V i2 -> FLT_V (f1 -. (float_of_int i2))
-  | _,_ -> raise (Type_Error "Invalid type of values for Sub (Scalar Subtraction)")
+  | _,_ -> raise (Type_Error "Invalid type of values for Sub (Scalar Subtraction) - Only Floats and Integers Supported")
 
 (* Helper function for multiplication *)
 let mul_helper val1 val2 = match val1, val2 with
@@ -211,23 +218,23 @@ let mul_helper val1 val2 = match val1, val2 with
   | FLT_V f1, FLT_V f2 -> FLT_V (f1 *. f2)
   | INT_V i1, FLT_V f2 -> FLT_V ((float_of_int i1) *. f2) (* Supporting type promotion *)
   | FLT_V f1, INT_V i2 -> FLT_V (f1 *. (float_of_int i2))
-  | _,_ -> raise (Type_Error "Invalid type of values for Mul (Scalar Multiplication)")
+  | _,_ -> raise (Type_Error "Invalid type of values for Mul (Scalar Multiplication) - Only Floats and Integers Supported")
 
 (* Helper function for division *)
 let div_helper val1 val2 = match val1, val2 with
   | INT_V i1, INT_V i2 -> 
-      if i2 = 0 then raise (Division_by_zero "Integer division by zero")
+      if i2 = 0 then raise (Division_by_zero "Integer division by zero unallowed")
       else INT_V (i1 / i2)
   | FLT_V f1, FLT_V f2 -> 
-      if f2 = 0.0 then raise (Division_by_zero "Float division by zero")
+      if f2 = 0.0 then raise (Division_by_zero "Float division by zero unallowed")
       else FLT_V (f1 /. f2)
   | INT_V i1, FLT_V f2 -> 
-      if f2 = 0.0 then raise (Division_by_zero "Float division by zero")
+      if f2 = 0.0 then raise (Division_by_zero "Float division by zero unallowed")
       else FLT_V ((float_of_int i1) /. f2)
   | FLT_V f1, INT_V i2 -> 
-      if i2 = 0 then raise (Division_by_zero "Float division by zero")
+      if i2 = 0 then raise (Division_by_zero "Float division by zero unallowed")
       else FLT_V (f1 /. (float_of_int i2))
-  | _,_ -> raise (Type_Error "Invalid type of values for Div (Scalar Division)")
+  | _,_ -> raise (Type_Error "Invalid type of values for Div (Scalar Division) - Only Floats and Integers Supported ")
 
 (* Helper function for modulo *)
 let mod_helper val1 val2 = match val1, val2 with
@@ -357,8 +364,9 @@ let pseudo_file_lex input_str typ_opt =
       else
         VAL (FMAT_V mat)
   | _, None -> raise (Type_Error "Type annotation required for input from a file")
-  | _,_ -> raise (Type_Error ("Input from file doesn't match expected type"))
-
+  | EOF,_ -> raise (Type_Error ("Input file might be empty !"))
+  | _,_ -> raise (File_Error ("Unexpected Error occured while reading from input file !"))
+ 
 let type_bin_op_num_helper bin_op t1 t2 = match t1 , t2 with 
   | E_INT, E_INT -> E_INT
   | E_FLOAT,E_INT | E_INT, E_FLOAT | E_FLOAT, E_FLOAT -> E_FLOAT
@@ -671,6 +679,8 @@ let rec eval_expr env = function
         | Mat_Mul_Mat, val1,val2 -> mat_mul_mat_helper val1 val2
         | Dot_Prod, val1, val2 -> dot_prod_helper val1 val2
         | Angle, val1, val2 -> angle_helper val1 val2
+        | Def_mn, INT_V m, INT_V n -> NMAT_V((def_mat_n m n))
+        | Def_mf, INT_V m, INT_V n -> FMAT_V((def_mat_f m n))
         | _ -> 
           let _ = print_environment env in
           raise (Type_Error("Type mismatch in binary operation - "^string_of_binop op^" "^string_of_exp e1^" "^string_of_exp e2)))
@@ -688,12 +698,16 @@ let rec eval_expr env = function
           | Mag_v, FVEC_V vec -> FLT_V (mag_vec_f vec)
           | Dim, NVEC_V vec -> INT_V (vec_dim vec)
           | Dim, FVEC_V vec -> INT_V (vec_dim vec)
+          | Dim, NMAT_V mat -> let (m,_) = mat_dim(mat) in INT_V (m)
+          | Dim, FMAT_V mat -> let (m,_) = mat_dim(mat) in INT_V (m)
           | Trp_Mat, NMAT_V mat -> NMAT_V (transpose_matrix_n mat)
           | Trp_Mat, FMAT_V mat -> FMAT_V (transpose_matrix_f mat)
           | Det, NMAT_V mat -> INT_V (determinant_n mat)
           | Det, FMAT_V mat -> FLT_V (determinant_f mat)
           | Inv, NMAT_V mat -> FMAT_V (inverse_matrix_n mat)
           | Inv, FMAT_V mat -> FMAT_V (inverse_matrix_f mat)
+          | Def_vn, INT_V dim -> NVEC_V(def_vec_n dim)
+          | Def_vf, INT_V dim -> FVEC_V(def_vec_f dim)
           | _ -> raise (Type_Error "Type mismatch in unary operation or eval not implemented"))
   
   (* Conditional expression *)
@@ -712,6 +726,51 @@ let rec eval_expr env = function
     )
  
 (* Helper function to check type compatibility *)
+let type_defmat_n_helper (env:environment) (e1 : exp) (e2 : exp) = 
+  let v1 = eval_expr env e1 in
+  let v2 = eval_expr env  e2 in
+  match v1,v2 with 
+  | INT_V m, INT_V n -> (
+    match m,n with 
+    | 0,_ -> raise (Type_Error("def_mn : Row Dimension of matrix should be positive")) 
+    | _,0 -> raise (Type_Error("def_mn : Column Dimension of matrix should be positive"))
+    | row,col -> (E_MAT_N(row,col))
+  )
+  | _,_ -> raise (Type_Error("def_mn only accepts integer expressions as input")) 
+    
+let type_defmat_f_helper (env: environment) (e1:exp) (e2:exp) = 
+  let v1 = eval_expr env e1 in
+  let v2 = eval_expr env  e2 in
+  match v1,v2 with 
+  | INT_V m, INT_V n -> (
+    match m,n with 
+    | 0,_ -> raise (Type_Error("def_mf : Row Dimension of matrix should be positive")) 
+    | _,0 -> raise (Type_Error("def_mf : Column Dimension of matrix should be positive"))
+    | row,col -> (E_MAT_F(row,col))
+  )
+  | _,_ -> raise (Type_Error("def_mf only accepts integer expressions as input"))
+
+let type_defvec_n_helper (env:environment) (e:exp) = 
+  let v = eval_expr env e in
+  match v with 
+  | INT_V m -> (
+    match m with
+    | 0 -> raise (Type_Error("def_vn : Row Dimension of matrix should be positive"))
+    | dim -> E_VEC_N dim  
+    )
+  | _ -> raise (Type_Error("def_vn : Only accepts integer expressions as input"))
+
+let type_defvec_f_helper(env:environment) (e:exp) =
+  let v = eval_expr env e in 
+  match v with 
+  | INT_V m -> (
+    match m with
+    | 0 -> raise (Type_Error("def_vf : Row Dimension of matrix should be positive"))
+    | dim -> E_VEC_F dim  
+    )
+  | _ -> raise (Type_Error("def_vn
+  f : Only accepts integer expressions as input"))
+
 let rec type_of_exp env = function
   (* Base cases *)
   | VAL (INT_V _) -> E_INT
@@ -856,6 +915,14 @@ let rec type_of_exp env = function
       let t1 = type_of_exp env e1 in
       let t2 = type_of_exp env e2 in
       type_mat_mul_mat_helper t1 t2 
+
+  | BIN_OP (Def_mn, e1, e2) ->(
+      type_defmat_n_helper env e1 e2
+    )
+
+  | BIN_OP (Def_mf, e1, e2) ->(
+      type_defmat_f_helper env e1 e2
+  )
   (* Unary Operations *)
   | UN_OP (Not, e) ->
       let t = type_of_exp env e in
@@ -881,6 +948,8 @@ let rec type_of_exp env = function
       (match t with
        | E_VEC_N n -> E_INT
        | E_VEC_F f -> E_INT
+       | E_MAT_F (m,n) -> E_INT
+       | E_MAT_N (m,n) -> E_INT
        | _ -> raise (Type_Error (err_string_of_unop Dim)))
 
   | UN_OP (Trp_Mat, e) ->
@@ -904,6 +973,11 @@ let rec type_of_exp env = function
           | E_INT -> E_INT
           | E_FLOAT -> E_FLOAT
           | _ -> raise (Type_Error(err_string_of_unop Abs)))
+  
+  | UN_OP (Def_vn,e) -> (
+    type_defvec_n_helper env e
+  )
+
   (* Conditional Expression *)
   | COND (cond, then_expr, else_expr) ->
       let t_cond = type_of_exp env cond in
@@ -927,14 +1001,14 @@ let convert_to_etype exp_typ exp_val = match exp_typ, exp_val with
   | T_VEC_F, FVEC_V v -> E_VEC_F (vec_dim v)
   | T_MAT_N, NMAT_V m -> let (row,col) = mat_dim m in E_MAT_N(row,col)
   | T_MAT_F, FMAT_V m -> let (row,col) = mat_dim m in E_MAT_F(row,col)
-  | _,_ -> raise(Type_Error("Cross Conversion of Incorrect Types !"))
+  | _,_ -> raise(Type_Error("Cross Conversion of Incorrect Types ! " ^( string_of_type (def_typ_val exp_val))^ " to " ^(string_of_type exp_typ)))
 
 let sl_assign_helper (env:environment) (e1:exp) (e2_etyp : etyp) (e2_val : value) = 
   match e1 with 
   | X_Slice(s,e) -> 
     (
       if not (var_in_env s env)
-      then raise (Var_Not_Found("Indexing called on Undefined variable" ^ s))
+      then raise (Var_Not_Found("Indexing called on Undefined variable " ^ s))
       else
         let _ = type_of_exp env e in (* Type Check before eval *)
         let i_val = eval_expr env e in
@@ -970,7 +1044,7 @@ let sl_assign_helper (env:environment) (e1:exp) (e2_etyp : etyp) (e2_val : value
   | XY_Slice(s,e1,e2) -> 
     (
       if not (var_in_env s env)
-        then raise (Var_Not_Found("Indexing called on Undefined variable" ^ s))
+        then raise (Var_Not_Found("Indexing called on Undefined variable " ^ s))
         else
           let (_,_) = (type_of_exp env e1, type_of_exp env e2) in (* Type Check before evaluation *)
           let i_val = eval_expr env e1 in
