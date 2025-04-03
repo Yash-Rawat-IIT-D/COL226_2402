@@ -1,0 +1,76 @@
+Parsing successful!
+Parsed program:
+integer_matrix A := 3 3 [[3, -2, 4], [1, 0, 2], [0, 1, 0]]
+integer_vector b := 3 [1, 2, 3]
+print(A)
+print(b)
+integer_vector result1 := (A mat_mul b)
+print(result1)
+integer_vector c := 3 [2, 1, 3]
+integer_vector result2 := (c mat_mul A)
+print(result2)
+integer det_A := (det A)
+print(det_A)
+float_matrix A_inv := (inv A)
+print(A_inv)
+float_matrix verify := (A mat_mul A_inv)
+print(verify)
+float_vector b_f := 3 [1., 2., 3.]
+float_vector x := (A_inv mat_mul b_f)
+print(x)
+float_vector verify_b := (A mat_mul x)
+print(verify_b)
+integer_vector v1 := 3 [1, 2, 3]
+integer_vector v2 := 3 [4, 5, 6]
+integer_vector v_sum := (v1 add_v v2)
+print(v_sum)
+integer_vector v_scaled := (2 scal_v v1)
+print(v_scaled)
+integer dot := (v1 dot_prod v2)
+print(dot)
+float mag := (mag_v v1)
+print(mag)
+float angle := (v1 angle v2)
+print(angle)
+integer_matrix M1 := 2 2 [[1, 2], [3, 4]]
+integer_matrix M2 := 2 2 [[5, 6], [7, 8]]
+integer_matrix M_sum := (M1 add_m M2)
+print(M_sum)
+integer_matrix M_prod := (M1 mat_mul M2)
+print(M_prod)
+integer_matrix M_trans := (trp_mat M1)
+print(M_trans)
+integer_matrix file_matrix := input("foo.txt")
+print(true)
+print(file_matrix)
+float_vector v := 3 [1., 1., 1.]
+float prev_lambda := 0.
+float lambda := 0.
+integer max_iter := 10
+integer i := 0
+float_matrix unit_mat_f_3by3 := 3 3 [[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]]
+float_matrix A_f := (A mat_mul unit_mat_f_3by3)
+print(A_f)
+
+Executing program...
+3 3 [[3, -2, 4], [1, 0, 2], [0, 1, 0]]
+3 [1, 2, 3]
+3 [11, 7, 2]
+3 [7, -1, 10]
+-2
+3 3 [[1., -2., 2.], [-0., -0., 1.], [-0.5, 1.5, -1.]]
+3 3 [[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]]
+3 [3., 3., -0.5]
+3 [1., 2., 3.]
+3 [5, 7, 9]
+3 [2, 4, 6]
+32
+3.741657
+0.225726
+2 2 [[6, 8], [10, 12]]
+2 2 [[19, 22], [43, 50]]
+2 2 [[1, 3], [2, 4]]
+true
+2 2 [[10, 20], [30, 40]]
+3 3 [[3., -2., 4.], [1., 0., 2.], [0., 1., 0.]]
+Program execution completed successfully.

@@ -1,0 +1,49 @@
+Parsing successful!
+Parsed program:
+integer x := 10
+integer y := 5
+integer z := 2
+integer result1 := (x + (y * z))
+print(result1)
+integer result2 := ((x + y) * z)
+print(result2)
+integer a := 20
+integer b := 4
+integer c := 2
+integer d := 8
+integer result3 := ((a / b) * c)
+print(result3)
+integer result4 := ((a - b) + c)
+print(result4)
+integer result5 := ((a + ((b * c) / d)) - z)
+print(result5)
+integer result6 := (((a + b) * (c + d)) / (z + 1))
+print(result6)
+integer result7 := (a % b)
+print(result7)
+integer result8 := (a % c)
+print(result8)
+integer result9 := (a % (b - 1))
+print(result9)
+integer result10 := ((neg a) + (b * c))
+print(result10)
+float f1 := 5.5
+float result11 := ((f1 * y) / z)
+print(result11)
+boolean condition := ((a > b) and (c < d))
+print(condition)
+
+Executing program...
+20
+30
+10
+18
+19
+80
+0
+0
+2
+-12
+13.750000
+true
+Program execution completed successfully.

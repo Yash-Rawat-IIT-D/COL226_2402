@@ -1,0 +1,98 @@
+/* =================== MATRIX_N TESTS =================== */
+
+Print(true);         // To indicate the start of the test
+
+matrix_n mn1 := 2, 2  [[1, 2], [3, 4]]; // Declaration shall work with and without \n , as per regex setup to recognise
+matrix_n mn2 := 2, 2  [[5, 6], [7, 8]]; 
+
+// Basic operations
+matrix_n sum_mn := mn1 add_m mn2;
+matrix_n prod_mn := mn1 mul_mv mn2;
+matrix_n transp_mn := transp_m mn1;
+int det_mn := det_m mn1;
+
+// Scalar multiplication
+matrix_n scal_mn1 := 2 scal_m mn1;  // Same as scal_v , the numerical scalar must be on the left
+matrix_n scal_mn2 := 3 scal_m mn1;  // Same as scal_v , the vector must be on the right
+
+// Default constructor test
+// matrix_n def_mn_ex := rows def_mn cols;      // Creates a zero matrix of size 3x3 - Should throw an error since rows and cols are not defined
+
+matrix_n def_mn_ex := 3 def_mn 3;   // Creates a zero matrix of size 3x3 - Should work fine
+
+// Printing results
+Print(sum_mn);       // Should print [[6, 8], [10, 12]]
+Print(prod_mn);      // Should print [[19, 22], [43, 50]]
+Print(transp_mn);    // Should print [[1, 3], [2, 4]]
+Print(det_mn);       // Should print -2
+Print(scal_mn1);     // Should print [[2, 4], [6, 8]]
+Print(scal_mn2);     // Should print [[3, 6], [9, 12]]
+Print(def_mn_ex);    // Should print a zero matrix of size 3x3
+
+/* =================== MATRIX_F TESTS =================== */
+
+Print(true);
+
+matrix_f mf1 := 2, 2 \n [[1.5, 2.5], [3.5, 4.5]];
+matrix_f mf2 := 2, 2 \n [[5.0, 6.0], [7.0, 8.0]];
+
+// Basic operations
+matrix_f sum_mf := mf1 add_m mf2;
+matrix_f prod_mf := mf1 mul_mv mf2;
+matrix_f transp_mf := transp_m mf1;
+float det_mf := det_m mf1;
+matrix_f inv_mf := inv mf1;
+
+// Scalar multiplication
+matrix_f scal_mf1 := 1.5 scal_m mf1;
+matrix_f scal_mf2 := 0.5 scal_m mf1;
+
+// Default constructor test
+matrix_f def_mf_ex := 4 def_mf 4;
+
+Print(sum_mf);       // Should print [[6.5, 8.5], [10.5, 12.5]]
+Print(prod_mf);      // Should print the resulting product matrix - 
+Print(transp_mf);    // Should print [[1.5, 3.5], [2.5, 4.5]]
+Print(det_mf);       // Should print the determinant of mf1
+Print(inv_mf);       // Should print the inverse of mf1
+Print(scal_mf1);     // Should print [[2.25, 3.75], [5.25, 6.75]]
+Print(scal_mf2);     // Should print [[0.75, 1.25], [1.75, 2.25]]
+Print(def_mf_ex);    // Should print a zero matrix of size 4x4
+
+/* ================= MIXED TYPE TESTS ================== */
+
+Print(true);
+
+// Type promotion tests
+matrix_f prom_add := mn1 add_m mf1;     // int + float matrix
+matrix_f prom_scal := 1.5 scal_m mn1;   // float scalar * int matrix
+matrix_f prom_mul := mn1 mul_mv mf2;    // int matrix * float matrix
+
+// Printing promoted operation results
+Print(prom_add);      // Resulting float matrix after addition
+Print(prom_scal);     // Resulting float matrix after scalar multiplication
+Print(prom_mul);      // Resulting float matrix after multiplication
+
+/* ============== EDGE CASE TESTING ================= */
+
+Print(true);
+
+// Zero matrices and scalar multiplication
+matrix_n zero_matrix_n := 3 def_mn 3 ;
+matrix_f zero_matrix_f := 3 def_mf 3 ;
+
+matrix_n zero_scaled_n :=  -10 scal_m zero_matrix_n;
+matrix_f zero_scaled_f :=  -10 scal_m zero_matrix_f;
+
+Print(zero_matrix_n);   // Should print a zero matrix of size 3x3
+Print(zero_matrix_f);   // Should print a zero matrix of size 3x3
+Print(zero_scaled_n);   // Should print a zero matrix of size 3x3
+Print(zero_scaled_f);   // Should print a zero matrix of size 3x3
+
+// /* ============== CHAINED OPERATIONS =============== */
+
+Print(true);
+
+// Chained operations with promotion and mixed types
+matrix_f chain_op := (mn1 add_m mf1) mul_mv (-0.5 scal_m mf2 );
+Print(chain_op);        // Resulting float matrix after chained operations

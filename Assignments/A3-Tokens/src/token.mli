@@ -5,7 +5,7 @@ type vector_int = int list
 type matrix_fl = vector_fl list
 type matrix_int = vector_int list
 
-type token =
+type tokens =
 	(* Handling file input and print functionalities *)
 	| PRINT | INPUT | FNAME of string
 

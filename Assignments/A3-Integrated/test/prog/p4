@@ -1,0 +1,31 @@
+/* Advanced Scoping Test */
+
+// Outer scope variable
+int x := 10;
+Print(x);  // Should print 10
+
+{
+    // Inner scope variable shadows outer scope
+    int x := 20;
+    Print(x);  // Should print 20
+    
+    {
+        // Nested inner scope variable shadows previous scopes
+        int x := 30;
+        Print(x);  // Should print 30
+        
+        if x > 25 then {
+            int y := 40;
+            Print(y);  // Should print 40
+        } else {
+            int y := 50;
+            Print(y);  // Should print 50 - But this block won't execute since x = 30 for this scope
+        }
+    }
+    
+    Print(x);  // Should print 20 (inner scope)
+}
+
+Print(x);  // Should print 10 (outer scope)
+
+

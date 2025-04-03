@@ -1,0 +1,69 @@
+Parsing successful!
+Parsed program:
+integer_matrix mat := input("mat2.txt")
+print(true)
+print(mat)
+float_matrix builtin_inv := (inv mat)
+print(true)
+print(builtin_inv)
+integer rows := (dim mat)
+integer cols := (dim mat[0])
+print(true)
+print(rows)
+print(cols)
+if (rows != cols) then {
+print(false)
+} else {
+print(true)
+integer det := (det mat)
+print(det)
+if (det = 0) then {
+print(false)
+} else {
+print(true)
+float_matrix cofactors := (cols def_mf rows)
+for (integer i := 0; (i < rows); i := (i + 1)) {
+for (integer j := 0; (j < rows); j := (j + 1)) {
+integer_matrix minor := ((cols - 1) def_mn (rows - 1))
+integer minor_row := 0
+for (integer x := 0; (x < rows); x := (x + 1)) {
+if (x != i) then {
+integer minor_col := 0
+for (integer y := 0; (y < rows); y := (y + 1)) {
+if (y != j) then {
+minor[minor_row][minor_col] := mat[x][y]
+minor_col := (minor_col + 1)
+}
+}
+minor_row := (minor_row + 1)
+}
+}
+float sign := if (((i + j) % 2) = 0) then 1. else -1.
+cofactors[i][j] := (sign * (det minor))
+}
+}
+float_matrix adjugate := (trp_mat cofactors)
+print(true)
+print(adjugate)
+float_matrix manual_inv := ((1. / det) scal_m adjugate)
+print(true)
+print(manual_inv)
+}
+}
+
+Executing program...
+true
+3 3 [[1, 2, 3], [0, 1, 4], [5, 6, 0]]
+true
+3 3 [[-24., 18., 5.], [20., -15., -4.], [-5., 4., 1.]]
+true
+3
+3
+true
+1
+true
+true
+3 3 [[-24., 18., 5.], [20., -15., -4.], [-5., 4., 1.]]
+true
+3 3 [[-24., 18., 5.], [20., -15., -4.], [-5., 4., 1.]]
+Program execution completed successfully.

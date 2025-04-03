@@ -1,0 +1,7 @@
+int x := 5;
+float y := 5.0;
+
+// Error: Mixed int/float comparison in if condition
+if x = y then {
+    Print(true);
+}

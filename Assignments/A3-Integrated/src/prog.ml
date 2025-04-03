@@ -1,6 +1,6 @@
 (*===================================================================================*)
             (* Program Specifications - COL226 Assignment 3 - 2023CS50334 *)  
-              (* prog.ml - Handles variable scoping and type checking *)
+              (* prog.ml - Handles variable scoping ,type checking and interpreter *)
 (*===================================================================================*)
 
 
@@ -253,6 +253,8 @@ let add_vec_helper val1 val2 = match val1, val2 with
 let add_mat_helper val1 val2 = match val1, val2 with
 	| NMAT_V mat1, NMAT_V mat2 -> NMAT_V (add_mat_n mat1 mat2)
 	| FMAT_V mat1, FMAT_V mat2 -> FMAT_V (add_mat_f mat1 mat2)
+  | NMAT_V mat1, FMAT_V mat2 -> FMAT_V (add_mat_f (scal_f_mat_n 1.0 mat1) mat2)
+  | FMAT_V mat1, NMAT_V mat2 -> FMAT_V (add_mat_f mat1 (scal_f_mat_n 1.0 mat2))
 	| _, _ -> raise (Type_Error "Invalid types for matrix addition")
 
 let scal_vec_helper val1 val2 = match val1, val2 with 
@@ -274,7 +276,7 @@ let dot_prod_helper val1 val2 = match val1, val2 with
 	| FVEC_V vec1, FVEC_V vec2 -> FLT_V (dot_prod_f vec1 vec2)
   | NVEC_V vec1, FVEC_V vec2 -> FLT_V (dot_prod_f (vec_int_to_float vec1) vec2)
   | FVEC_V vec1, NVEC_V vec2 -> FLT_V (dot_prod_f vec1 (vec_int_to_float vec2))
-	| _, _ -> raise (Type_Error "Invalid types for vector addition")
+	| _, _ -> raise (Type_Error "Invalid types for vector dot product operation")
 
 let angle_helper val1 val2 = match val1, val2 with
 	| NVEC_V vec1, NVEC_V vec2 -> FLT_V (angle_vec_n vec1 vec2)
@@ -365,7 +367,7 @@ let pseudo_file_lex input_str typ_opt =
         VAL (FMAT_V mat)
   | _, None -> raise (Type_Error "Type annotation required for input from a file")
   | EOF,_ -> raise (Type_Error ("Input file might be empty !"))
-  | _,_ -> raise (File_Error ("Unexpected Error occured while reading from input file !"))
+  | _,_ -> raise (File_Error ("Unexpected Error occured while reading from input file ! - Potential Type Mismatch !"))
  
 let type_bin_op_num_helper bin_op t1 t2 = match t1 , t2 with 
   | E_INT, E_INT -> E_INT
@@ -382,12 +384,12 @@ let type_bin_op_bool_helper bin_op t1 t2 = match t1, t2 with
 let type_add_vec_helper t1 t2 = match t1, t2 with 
   | E_VEC_N d1, E_VEC_N d2 ->
     ( if(d1 <> d2) 
-      then raise (Dimension_Mismatch ("Integer Vector addition requires equal dimensions: Found" ^ 
+      then raise (Dimension_Mismatch ("Integer Vector addition requires equal dimensions: Found " ^ 
                                         string_of_int d1 ^ " , " ^ string_of_int d2))
       else E_VEC_N d1 )
   | E_VEC_F d1, E_VEC_F d2 -> 
     ( if(d1 <> d2) 
-      then raise (Dimension_Mismatch ("Float Vector addition requires equal dimensions: Found" ^ 
+      then raise (Dimension_Mismatch ("Float Vector addition requires equal dimensions: Found " ^ 
                                         string_of_int d1 ^ " , " ^ string_of_int d2))
       else E_VEC_F d1 )
   | E_VEC_N d1, E_VEC_F d2 ->
@@ -405,22 +407,22 @@ let type_add_vec_helper t1 t2 = match t1, t2 with
 let type_dot_prod_helper t1 t2 = match t1, t2 with 
   | E_VEC_N d1, E_VEC_N d2 ->
     ( if(d1 <> d2) 
-      then raise (Dimension_Mismatch ("Integer Vector dot product requires equal dimensions: Found" ^ 
+      then raise (Dimension_Mismatch ("Integer Vector dot product requires equal dimensions: Found " ^ 
                                         string_of_int d1 ^ " , " ^ string_of_int d2))
       else E_INT )
   | E_VEC_F d1, E_VEC_F d2 -> 
     ( if(d1 <> d2) 
-      then raise (Dimension_Mismatch ("Float Vector dot product requires equal dimensions: Found" ^ 
+      then raise (Dimension_Mismatch ("Float Vector dot product requires equal dimensions: Found " ^ 
                                         string_of_int d1 ^ " , " ^ string_of_int d2))
       else E_FLOAT)
   | E_VEC_N d1, E_VEC_F d2 ->
     ( if(d1 <> d2)
-      then raise (Dimension_Mismatch ("Mixed Vector dot product requires equal dimensions: Found" ^ 
+      then raise (Dimension_Mismatch ("Mixed Vector dot product requires equal dimensions: Found " ^ 
                                         string_of_int d1 ^ " , " ^ string_of_int d2))
       else E_FLOAT)  (* Promote to float result *)
   | E_VEC_F d1, E_VEC_N d2 ->
       ( if(d1 <> d2)
-        then raise (Dimension_Mismatch ("Mixed Vector dot product requires equal dimensions: Found" ^ 
+        then raise (Dimension_Mismatch ("Mixed Vector dot product requires equal dimensions: Found " ^ 
                                           string_of_int d1 ^ " , " ^ string_of_int d2))
       else E_FLOAT)  (* Promote to float result *)
   | _,_ -> raise (Type_Error (err_string_of_binop Dot_Prod))
@@ -428,12 +430,12 @@ let type_dot_prod_helper t1 t2 = match t1, t2 with
 let type_angle_helper t1 t2 = match t1, t2 with
   | E_VEC_N d1, E_VEC_N d2 ->
     ( if(d1 <> d2) 
-      then raise (Dimension_Mismatch ("Integer Vector angle requires equal dimensions: Found" ^ 
+      then raise (Dimension_Mismatch ("Integer Vector angle requires equal dimensions: Found " ^ 
                                         string_of_int d1 ^ " , " ^ string_of_int d2))
       else E_FLOAT)
   | E_VEC_F d1, E_VEC_F d2 -> 
     ( if(d1 <> d2) 
-      then raise (Dimension_Mismatch ("Float Vector angle requires equal dimensions: Found" ^ 
+      then raise (Dimension_Mismatch ("Float Vector angle requires equal dimensions: Found " ^ 
                                         string_of_int d1 ^ " , " ^ string_of_int d2))
       else E_FLOAT)
   | _,_ -> raise (Type_Error (err_string_of_binop Angle))
@@ -451,6 +453,15 @@ let type_add_mat_helper t1 t2 = match t1, t2 with
     ( if((r1 <> r2 ||c1 <> c2)) 
       then
         raise (Dimension_Mismatch ("Float Matrix addition requires equal dimensions: Found " ^ 
+              string_of_int r1 ^ "x" ^ string_of_int c1 ^ " , " ^ 
+              string_of_int r2 ^ "x" ^ string_of_int c2))   
+      else
+        E_MAT_F (r1,c1))
+
+  | E_MAT_N (r1,c1), E_MAT_F (r2,c2) | E_MAT_F(r1,c1), E_MAT_N(r2,c2) ->
+    ( if((r1 <> r2 ||c1 <> c2)) 
+      then
+        raise (Dimension_Mismatch ("Matrix addition of mixed types requires equal dimensions: Found " ^ 
               string_of_int r1 ^ "x" ^ string_of_int c1 ^ " , " ^ 
               string_of_int r2 ^ "x" ^ string_of_int c2))   
       else
@@ -612,14 +623,14 @@ let type_x_slice_helper (env:environment) (s : string) (e_etyp : etyp) =
     | E_VEC_F n, E_INT -> E_FLOAT 
     | E_MAT_N (m,n), E_INT -> E_VEC_N n 
     | E_MAT_F (m,n), E_INT -> E_VEC_F n
-    | _,_ -> raise(Type_Mismatch("Invalid Type : Integer Indexing only allowed by matrix and vectors"))
+    | _,_ -> raise(Type_Mismatch("Invalid Type : Integer Indexing only allowed by matrix and vectors - Possible type mismatch of index !"))
   )
 let type_xy_slice_helper (env:environment) (s : string) (e1_etyp : etyp) (e2_etyp : etyp)=
   let (s_etyp,s_val) = lookup_var s env in
     ( match s_etyp, e1_etyp, e2_etyp with 
       | E_MAT_N (m,n), E_INT, E_INT -> E_INT 
       | E_MAT_F (m,n), E_INT, E_INT -> E_FLOAT
-      | _,_,_ -> raise(Type_Mismatch("Invalid Type : Double Integer Indexing only allowed by matrix"))
+      | _,_,_ -> raise(Type_Mismatch("Invalid Type : Double Integer Indexing only allowed by matrix - Possible type mismatch of index !"))
     )
 
 (*===================================================================================*)
@@ -636,13 +647,16 @@ let rec eval_expr env = function
          let (_, value) = lookup_var id env in
          value
        with Var_Not_Found _ -> 
+         let _ = print_environment env in
          raise (Undefined_Var ("Undefined variable: " ^ id)))
   
   | X_Slice(s,e) ->
     ( let v1 = eval_expr env e in
       match v1 with
         | INT_V i -> x_slice_helper env s i
-        | _ -> raise(Type_Error("Indexing Expression must have type : int"))
+        | _ -> 
+          let _ = print_environment env in
+          raise(Type_Error("Indexing Expression must have type : int"))
     )
   
   | XY_Slice(s,e1,e2) ->
@@ -683,7 +697,8 @@ let rec eval_expr env = function
         | Def_mf, INT_V m, INT_V n -> FMAT_V((def_mat_f m n))
         | _ -> 
           let _ = print_environment env in
-          raise (Type_Error("Type mismatch in binary operation - "^string_of_binop op^" "^string_of_exp e1^" "^string_of_exp e2)))
+          raise (Type_Error("Type mismatch in binary operation - Operator : "^string_of_binop op^ " , Operands : " ^ string_of_exp e1^" , "^string_of_exp e2 ^"
+                \nOperation may not support provided types or might not be implemented (Such as float based comparison)")))
 
   (* Unary operations *)
   | UN_OP (op, e) ->
@@ -708,14 +723,18 @@ let rec eval_expr env = function
           | Inv, FMAT_V mat -> FMAT_V (inverse_matrix_f mat)
           | Def_vn, INT_V dim -> NVEC_V(def_vec_n dim)
           | Def_vf, INT_V dim -> FVEC_V(def_vec_f dim)
-          | _ -> raise (Type_Error "Type mismatch in unary operation or eval not implemented"))
+          | _ -> 
+            let _ = print_environment env in
+            raise (Type_Error "Type mismatch in unary operation or eval not implemented"))
   
   (* Conditional expression *)
   | COND (cond, then_expr, else_expr) ->
       (match eval_expr env cond with
        | BL_V true -> eval_expr env then_expr
        | BL_V false -> eval_expr env else_expr
-       | _ -> raise (Type_Error "Condition must evaluate to a boolean"))
+       | _ -> 
+        let _ = print_environment env in
+        raise (Type_Error "Condition must evaluate to a boolean"))
 
   (* Input handling (simplified) *)
   | Input fname_opt -> 
@@ -1034,7 +1053,7 @@ let sl_assign_helper (env:environment) (e1:exp) (e2_etyp : etyp) (e2_val : value
                                               else raise(Dimension_Mismatch("Trying to assing a row of dimension "^string_of_int d^
                                                         " to a float matrix of dimension ["^string_of_int m1^","^string_of_int n1^"]")) 
                                             )
-                                          | _,_,_,_ -> raise(Type_Error("Invalid Indexing Assignment - Values Mismatch"))) in
+                                          | _,_,_,_ -> raise(Type_Error("Invalid Indexing Assignment - Values Mismatch (Potential Type Mismatch)"))) in
                           if(var_frame_check)
                           then define_var s lhs_etyp new_val env
                           else update_var s lhs_etyp new_val env
@@ -1106,7 +1125,9 @@ let rec eval_stmt env = function
                 else
                   match typ_opt with
                   | Some t -> convert_to_etype t processed_val
-                  | None -> raise (Type_Error ("Type annotation required for new variable " ^ id))
+                  | None -> 
+                    let _ = print_environment env in
+                    raise (Type_Error ("Type annotation required for new variable " ^ id))
               in
               if compatible_types processed_exp_type expected_type then
                 if typ_opt <> None then
@@ -1120,8 +1141,10 @@ let rec eval_stmt env = function
                   update_var id expected_type processed_val env
                 else
                   (* New variable without type annotation - not allowed *)
+                  let _ = print_environment env in
                   raise (Type_Error ("Type annotation required for new variable " ^ id))
               else
+                let _ = print_environment env in
                 raise (Type_Error ("Type mismatch in assignment to " ^ id))
                 
           | _ ->
@@ -1135,7 +1158,9 @@ let rec eval_stmt env = function
               else
                 match typ_opt with
                 | Some t -> convert_to_etype t expr_value
-                | None -> raise (Type_Error ("Type annotation required for new variable " ^ id))
+                | None -> 
+                  let _ = print_environment env in
+                  raise (Type_Error ("Type annotation required for new variable " ^ id))
             in
             if compatible_types expr_type expected_type then
               if typ_opt <> None then
@@ -1149,9 +1174,11 @@ let rec eval_stmt env = function
                 update_var id expected_type expr_value env
               else
                 (* New variable without type annotation - not allowed *)
+                let _ = print_environment env in
                 raise (Type_Error ("Type annotation required for new variable " ^ id))
             else
-              raise (Type_Error ("Type mismatch in assignment to " ^ id))
+              let _ = print_environment env in
+              raise (Type_Error ("Type mismatch in assignment to" ^ id ^ " Expected : "^ string_of_etype expected_type ^ " Was Assigned : "^ string_of_etype expr_type))
       )        
   | Print expr ->
       let value = eval_expr env expr in
@@ -1187,7 +1214,9 @@ let rec eval_stmt env = function
               (match else_opt with
               | Some else_stmt -> eval_stmt env else_stmt
               | None -> env)
-          | _ -> raise (Type_Error "Condition must evaluate to a boolean")
+          | _ -> 
+            let _ = print_environment env in
+            raise (Type_Error "Condition must evaluate to a boolean")
      )
      
   | While (cond, body) ->
@@ -1198,7 +1227,9 @@ let rec eval_stmt env = function
             let new_env = eval_stmt env body in
             loop new_env
         | BL_V false -> env
-        | _ -> raise (Type_Error "Condition must evaluate to a boolean")
+        | _ -> 
+          let _ = print_environment env in
+          raise (Type_Error "Condition must evaluate to a boolean")
       in
       loop env
       
@@ -1212,12 +1243,14 @@ let rec eval_stmt env = function
             let update_env = eval_stmt body_env update in
             loop update_env
         | BL_V false -> env
-        | _ -> raise (Type_Error "Condition must evaluate to a boolean")
+        | _ -> 
+          let _ = print_environment env in
+          raise (Type_Error "Condition must evaluate to a boolean")
       in
       loop init_env
   
 (* Evaluate a complete program *)
-let eval_prog prog =
+let interpret_prog prog =
   let env = init_env () in
   let rec eval_stmts env = function
     | [] -> env

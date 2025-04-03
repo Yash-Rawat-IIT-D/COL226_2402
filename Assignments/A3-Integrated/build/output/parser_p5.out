@@ -1,0 +1,42 @@
+Parsing successful!
+Parsed program:
+integer_vector vec := 5 [10, 20, 30, 40, 50]
+print(vec)
+integer first := vec[0]
+print(first)
+vec[1] := 27
+print(vec)
+integer last := vec[4]
+print(last)
+integer_matrix mat := 3 3 [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+print(mat)
+integer_vector row2 := mat[1]
+print(row2)
+mat[0] := 3 [10, 11, 12]
+print(mat)
+integer top_right := mat[0][2]
+print(top_right)
+mat[2][1] := 88
+print(mat[2])
+print(mat)
+integer_vector single_element_vec := 1 [100]
+print(single_element_vec[0])
+integer_matrix wide_mat := 2 4 [[1, 2, 3, 4], [5, 6, 7, 8]]
+integer_vector extract_col := 4 [0, 0, 0, 1]
+integer_vector last_col := (wide_mat mat_mul extract_col)
+print(last_col)
+
+Executing program...
+5 [10, 20, 30, 40, 50]
+10
+5 [10, 27, 30, 40, 50]
+50
+3 3 [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+3 [4, 5, 6]
+3 3 [[10, 11, 12], [4, 5, 6], [7, 8, 9]]
+12
+3 [7, 88, 9]
+3 3 [[10, 11, 12], [4, 5, 6], [7, 88, 9]]
+100
+2 [4, 8]
+Program execution completed successfully.

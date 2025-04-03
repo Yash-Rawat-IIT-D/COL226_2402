@@ -1,0 +1,30 @@
+Parsing successful!
+Parsed program:
+integer x := 10
+print(x)
+{
+integer x := 20
+print(x)
+{
+integer x := 30
+print(x)
+if (x > 25) then {
+integer y := 40
+print(y)
+} else {
+integer y := 50
+print(y)
+}
+}
+print(x)
+}
+print(x)
+
+Executing program...
+10
+20
+30
+40
+20
+10
+Program execution completed successfully.

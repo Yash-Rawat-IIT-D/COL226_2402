@@ -1,4 +1,0 @@
-float a := 5.5;
-vector_n v := 3 [1, 2, 3];
-vector_f scaled := a scal_v v;
-Print(scaled);

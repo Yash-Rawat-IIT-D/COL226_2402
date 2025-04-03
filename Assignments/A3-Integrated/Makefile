@@ -52,40 +52,40 @@ $(SRC_DIR)/main_lexer.cmo: $(SRC_DIR)/main_lexer.ml $(SRC_DIR)/my_lexer.cmo
 $(SRC_DIR)/prog.cmo: $(SRC_DIR)/prog.ml $(SRC_DIR)/my_ast.cmi $(SRC_DIR)/my_parser.cmi $(SRC_DIR)/my_lexer.cmi
 	$(OCAMLC) $(OCAMLFLAGS) -c $< -o $(SRC_DIR)/prog.cmo
 
-# Compile main_parser (for parser testing)
-$(SRC_DIR)/main_parser.cmo: $(SRC_DIR)/main_parser.ml $(SRC_DIR)/my_parser.cmo $(SRC_DIR)/my_lexer.cmo
-	$(OCAMLC) $(OCAMLFLAGS) -c $< -o $(SRC_DIR)/main_parser.cmo
+# Compile main_prog (for parser testing)
+$(SRC_DIR)/main_prog.cmo: $(SRC_DIR)/main_prog.ml $(SRC_DIR)/my_parser.cmo $(SRC_DIR)/my_lexer.cmo
+	$(OCAMLC) $(OCAMLFLAGS) -c $< -o $(SRC_DIR)/main_prog.cmo
 
 # Build lexer test executable
 $(BUILD_DIR)/lexer_test: $(SRC_DIR)/my_ast.cmo $(SRC_DIR)/my_parser.cmo $(SRC_DIR)/my_lexer.cmo $(SRC_DIR)/main_lexer.cmo
 	$(OCAMLC) $(OCAMLFLAGS) -o $@ $^
 
 # Build parser test executable
-$(BUILD_DIR)/prog_test: $(SRC_DIR)/my_ast.cmo $(SRC_DIR)/my_parser.cmo $(SRC_DIR)/my_lexer.cmo $(SRC_DIR)/prog.cmo $(SRC_DIR)/main_parser.cmo
+$(BUILD_DIR)/prog_test: $(SRC_DIR)/my_ast.cmo $(SRC_DIR)/my_parser.cmo $(SRC_DIR)/my_lexer.cmo $(SRC_DIR)/prog.cmo $(SRC_DIR)/main_prog.cmo
 	$(OCAMLC) $(OCAMLFLAGS) -o $@ $^
 
 # Run lexer tests
 test-lexer: $(BUILD_DIR)/lexer_test
-	@for t in test/t*; do \
+	@for t in test/token/*; do \
 		echo "Testing lexer on $$t"; \
 		$(BUILD_DIR)/lexer_test $$t > $(OUTPUT_DIR)/lexer_`basename $$t`.out; \
 	done
-	@for t in test/p*; do \
+	@for t in test/prog/*; do \
 		echo "Testing lexer on $$t"; \
 		$(BUILD_DIR)/lexer_test $$t > $(OUTPUT_DIR)/lexer_`basename $$t`.out; \
 	done
 # Run parser tests
-test-parser: $(BUILD_DIR)/prog_test
-	@for t in test/p*; do \
+test-prog: $(BUILD_DIR)/prog_test
+	@for t in test/prog/p*; do \
 		echo "Testing parser on $$t"; \
 		$(BUILD_DIR)/prog_test $$t > $(OUTPUT_DIR)/parser_`basename $$t`.out; \
 	done
 
 # Run all tests
-test: test-lexer test-parser
+test: test-lexer test-prog
 
 submission:
-	cp -r . /mnt/c/Users/YASH/Documents/
+	cp -r . /mnt/c/Users/YASH/Documents/Inventor
 # Clean target to remove generated files
 clean:
 	rm -f $(SRC_DIR)/*.cm* $(SRC_DIR)/my_parser.ml $(SRC_DIR)/my_parser.mli $(SRC_DIR)/my_lexer.ml

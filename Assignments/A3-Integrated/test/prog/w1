@@ -1,0 +1,7 @@
+float counter := 0.0;
+
+// Error: Float comparison in loop condition
+while counter < 10.0 {
+    Print(counter);
+    counter := counter + 1.5;
+}

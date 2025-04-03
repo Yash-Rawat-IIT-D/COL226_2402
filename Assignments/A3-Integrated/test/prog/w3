@@ -1,0 +1,12 @@
+// int x := 10;
+// x := 3.14;  // Error: Variable 'x' already declared as int - Cannot assign float
+
+// vector_n v := 3 [1, 2, 3];
+// v := 5;  // Error: Can't assign int to vector_n
+
+// int fval := Input("float_data.txt");  // Error - float_data.txt not found
+// fval := Input("float.txt");  // Error - Type annotation required 
+// float fval := Input("empty.txt");  // Error - empty.txt might be empty
+// float fval :=  Input("float.txt");
+
+Print(fval); // Variable not declared

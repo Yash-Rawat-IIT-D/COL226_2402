@@ -1,0 +1,8 @@
+float flag := 3.14;
+
+// Error: Using non-boolean value as boolean condition
+
+if flag then {
+    Print(false);
+    Print(0);
+}

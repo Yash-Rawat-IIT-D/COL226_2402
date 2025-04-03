@@ -1,0 +1,27 @@
+// So we fixed the code to print the first two terms of the Fibonacci series
+
+int n := Input();
+
+if n < 0 then {
+    Print(false);
+} else {
+    int a := 0;
+    int b := 1;
+    
+    Print(a);  // Always print first term
+    
+    if n >= 1 then {
+        Print(b);  // Print second term if n >= 1
+        
+        if n >= 2 then {
+            int i := 2;
+            while i <= n {
+                int c := a + b;
+                Print(c);
+                a := b;
+                b := c;
+                i := i + 1;
+            }
+        }
+    }
+}

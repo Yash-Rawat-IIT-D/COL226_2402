@@ -1,0 +1,21 @@
+Parsing successful!
+Parsed program:
+integer a := 5
+float b := 2.5
+float c := (a * b)
+print(c)
+integer_vector v := 3 [1, 2, 3]
+float_vector scaled := (2.5 scal_v v)
+print(scaled)
+integer_matrix m := 2 2 [[1, 2], [3, 4]]
+float_matrix m_scaled := (0.5 scal_m m)
+print(m_scaled)
+boolean cond := ((a > 3) and (a < 10))
+print(cond)
+
+Executing program...
+12.500000
+3 [2.5, 5., 7.5]
+2 2 [[0.5, 1.], [1.5, 2.]]
+true
+Program execution completed successfully.

@@ -1,0 +1,88 @@
+Parsing successful!
+Parsed program:
+print(true)
+integer_matrix mn1 := 2 2 [[1, 2], [3, 4]]
+integer_matrix mn2 := 2 2 [[5, 6], [7, 8]]
+integer_matrix sum_mn := (mn1 add_m mn2)
+integer_matrix prod_mn := (mn1 mat_mul mn2)
+integer_matrix transp_mn := (trp_mat mn1)
+integer det_mn := (det mn1)
+integer_matrix scal_mn1 := (2 scal_m mn1)
+integer_matrix scal_mn2 := (3 scal_m mn1)
+integer_matrix def_mn_ex := (3 def_mn 3)
+print(sum_mn)
+print(prod_mn)
+print(transp_mn)
+print(det_mn)
+print(scal_mn1)
+print(scal_mn2)
+print(def_mn_ex)
+print(true)
+float_matrix mf1 := 2 2 [[1.5, 2.5], [3.5, 4.5]]
+float_matrix mf2 := 2 2 [[5., 6.], [7., 8.]]
+float_matrix sum_mf := (mf1 add_m mf2)
+float_matrix prod_mf := (mf1 mat_mul mf2)
+float_matrix transp_mf := (trp_mat mf1)
+float det_mf := (det mf1)
+float_matrix inv_mf := (inv mf1)
+float_matrix scal_mf1 := (1.5 scal_m mf1)
+float_matrix scal_mf2 := (0.5 scal_m mf1)
+float_matrix def_mf_ex := (4 def_mf 4)
+print(sum_mf)
+print(prod_mf)
+print(transp_mf)
+print(det_mf)
+print(inv_mf)
+print(scal_mf1)
+print(scal_mf2)
+print(def_mf_ex)
+print(true)
+float_matrix prom_add := (mn1 add_m mf1)
+float_matrix prom_scal := (1.5 scal_m mn1)
+float_matrix prom_mul := (mn1 mat_mul mf2)
+print(prom_add)
+print(prom_scal)
+print(prom_mul)
+print(true)
+integer_matrix zero_matrix_n := (3 def_mn 3)
+float_matrix zero_matrix_f := (3 def_mf 3)
+integer_matrix zero_scaled_n := (-10 scal_m zero_matrix_n)
+float_matrix zero_scaled_f := (-10 scal_m zero_matrix_f)
+print(zero_matrix_n)
+print(zero_matrix_f)
+print(zero_scaled_n)
+print(zero_scaled_f)
+print(true)
+float_matrix chain_op := ((mn1 add_m mf1) mat_mul (-0.5 scal_m mf2))
+print(chain_op)
+
+Executing program...
+true
+2 2 [[6, 8], [10, 12]]
+2 2 [[19, 22], [43, 50]]
+2 2 [[1, 3], [2, 4]]
+-2
+2 2 [[2, 4], [6, 8]]
+2 2 [[3, 6], [9, 12]]
+3 3 [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+true
+2 2 [[6.5, 8.5], [10.5, 12.5]]
+2 2 [[25., 29.], [49., 57.]]
+2 2 [[1.5, 3.5], [2.5, 4.5]]
+-2.000000
+2 2 [[-2.25, 1.25], [1.75, -0.75]]
+2 2 [[2.25, 3.75], [5.25, 6.75]]
+2 2 [[0.75, 1.25], [1.75, 2.25]]
+4 4 [[0., 0., 0., 0.], [0., 0., 0., 0.], [0., 0., 0., 0.], [0., 0., 0., 0.]]
+true
+2 2 [[2.5, 4.5], [6.5, 8.5]]
+2 2 [[1.5, 3.], [4.5, 6.]]
+2 2 [[19., 22.], [43., 50.]]
+true
+3 3 [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+3 3 [[0., 0., 0.], [0., 0., 0.], [0., 0., 0.]]
+3 3 [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+3 3 [[-0., -0., -0.], [-0., -0., -0.], [-0., -0., -0.]]
+true
+2 2 [[-22., -25.5], [-46., -53.5]]
+Program execution completed successfully.

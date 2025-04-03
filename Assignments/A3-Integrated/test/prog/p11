@@ -1,0 +1,31 @@
+/* Matrix Transposition Program */
+
+// Read matrix from file
+matrix_n mat := Input("mat1.txt");
+Print(true);
+Print(mat);
+
+// ========== Built-in Transpose ==========
+matrix_n builtin_trans := transp_m mat;
+Print(builtin_trans);
+
+// ========== Manual Transpose ==========
+int rows := dim_v(mat);          // Get row count - Implemented in the prog module
+int cols := dim_v(mat[0]);       // Get column count from first row
+
+// Create empty transpose matrix
+matrix_n manual_trans := cols def_mn rows;
+
+Print(true);
+Print(manual_trans);
+
+// Perform transposition
+for (int i := 0; i < rows; i := i + 1;) {
+    for (int j := 0; j < cols; j := j + 1;) {
+        manual_trans[j][i] := mat[i][j];
+    }
+}
+
+Print(true);
+Print(manual_trans);
+

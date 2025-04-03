@@ -1,0 +1,40 @@
+Parsing successful!
+Parsed program:
+integer i := 0
+while (i < 10) {
+print(i)
+i := (i + 1)
+}
+if (i = 10) then {
+print(true)
+if (i = 11) then {
+print(true)
+} else {
+print(false)
+}
+} else {
+print(false)
+}
+for (integer j := 0; (j < 5); j := (j + 1)) {
+print((j * j))
+}
+
+Executing program...
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+true
+false
+0
+1
+4
+9
+16
+Program execution completed successfully.

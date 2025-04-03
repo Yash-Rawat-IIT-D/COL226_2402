@@ -1,0 +1,32 @@
+// vector_n v1 := 3 [1,2,3];
+// vector_n v2 := 4 [1,2,3,4];
+// vector_n v3 := v1 add_v v2;  // Error: Dimension mismatch but more descreptive
+
+// int a := 5;
+// vector_n v := 3 [1,2,3];
+// int res := a add_v v;  // Error: Can't add int and vector
+
+// matrix_n m := 2 2 [[1,2],[3,4]];
+// m[0] := 5;  // Error: Can't assign int to matrix row
+
+// vector_n v := 3 [1, 2, 3];
+// int elem := v[-1];  // Error: Negative index
+// Print(elem);
+
+// matrix_n m := 2 3 [[1,2,3],[4,5,6]];
+// vector_n row := m[2];  // Error: Row index >= row count
+// Print(row);
+
+// matrix_n m := 2 3 [[1,2,3],[4,5,6]];
+// int cell := m[0][3];  // Error: Column index >= column count
+// Print(cell);
+
+// matrix_f mf := 2 2 [[1.5, 2.5], [3.5, 4.5]];
+// int idx := 1.5;  // Float value in int variable
+// float val := mf[idx][0];  // Error: Float index
+// Print(val);
+
+vector_n v := 4 [1,2,3,4];
+bool flag := true;
+int elem := v[flag];  // Error: Non-integer index
+Print(elem);

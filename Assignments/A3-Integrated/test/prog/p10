@@ -1,0 +1,61 @@
+/* Matrix-Vector Multiplication Test - Overloading od Matrix and Vector Multiplication */
+
+// ================== VALID OPERATIONS ==================
+// Integer matrix * integer vector
+matrix_n mat1 := 2 3 [[1, 2, 3], [4, 5, 6]];
+vector_n vec1 := 3 [7, 8, 9];
+vector_n res1 := mat1 mul_mv vec1;
+Print(res1);  // Should print 2 [50, 122]
+
+// Float matrix * float vector
+matrix_f mat2 := 3 2 [[1.5, 2.5], [3.5, 4.5], [5.5, 6.5]];
+vector_f vec2 := 2 [2.0, 3.0];
+vector_f res2 := mat2 mul_mv vec2;
+Print(res2);  // Should print 3 [10.5, 25.5, 30.5]
+
+// Mixed types (int matrix * float vector)
+matrix_n mat3 := 3 3 [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+vector_f vec3 := 3 [2.5, 3.5, 4.5];
+vector_f res3 := mat3 mul_mv vec3;
+Print(res3);  // Should print 3 [2.5, 3.5, 4.5]
+
+// Mixed types (float matrix * int vector)
+matrix_f mat4 := 2 2 [[1.5, 2.5], [3.5, 4.5]];
+vector_n vec4 := 2 [2, 3];
+vector_f res4 := mat4 mul_mv vec4;
+Print(res4);  // Should print 2 [10.5, 20.5]
+
+// Vector * matrix multiplication
+vector_n vec5 := 2 [2, 3];
+matrix_n mat5 := 2 3 [[1, 2, 3], [4, 5, 6]];
+vector_n res5 := vec5 mul_mv mat5;
+Print(res5);  // Should print 3 [14, 19, 24]
+
+// // ================== EDGE CASES ==================
+// Identity matrix multiplication
+matrix_n identity := 3 def_mn 3;
+identity[0][0] := 1;
+identity[1][1] := 1;
+identity[2][2] := 1;
+Print(identity);  // Should print identity matrix
+vector_n vec6 := 3 [5, 6, 7];
+vector_n res6 := identity mul_mv vec6;
+Print(res6);  // Should print 3 [5, 6, 7]
+
+// Zero vector multiplication
+matrix_n mat7 := 2 2 [[1, 2], [3, 4]];
+vector_n zero_vec := def_vn 2;
+vector_n res7 := mat7 mul_mv zero_vec;
+Print(res7);  // Should print 2 [0, 0]
+
+// ================== ERROR CASES ==================
+// Dimension mismatch - matrix columns vs vector length
+// matrix_n mat8 := 2 3 [[1,2,3],[4,5,6]];
+// vector_n vec8 := 2 [1,2];
+// vector_n res8 := mat8 mul_mv vec8;  // Should throw dimension error - Since language insterpreted statement by statement , execution will stop at this line
+
+
+// // Invalid operand types
+// vector_n vec10 := 3 [1,2,3];
+// vector_n vec11 := 3 [4,5,6];
+// vector_n res10 := vec10 mul_mv vec11;  // Should throw type error

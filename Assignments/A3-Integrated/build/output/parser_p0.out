@@ -1,0 +1,23 @@
+Parsing successful!
+Parsed program:
+integer x := 10
+integer y := 5
+integer z := (x + y)
+integer w := (y - x)
+print(z)
+print(w)
+print((abs w))
+float a := 3.5
+float b := 2.
+float c := (a * b)
+print(c)
+boolean flag := (x > y)
+print(flag)
+
+Executing program...
+15
+-5
+5
+7.000000
+true
+Program execution completed successfully.

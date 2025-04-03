@@ -1,0 +1,17 @@
+// Fibonacci series upto n (starting from 0) when taken from input - Note that the logic expressed is only correct for n>=2
+
+int n := Input();
+int a := 0;
+int b := 1;
+int i := 2;
+
+Print(a);
+Print(b);
+
+while i <= n {
+    int c := a + b;
+    Print(c);
+    a := b;
+    b := c;
+    i := i + 1;
+}

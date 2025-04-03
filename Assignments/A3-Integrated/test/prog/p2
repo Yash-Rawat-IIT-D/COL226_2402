@@ -1,0 +1,109 @@
+/* =================== VECTOR_N TESTS =================== */
+
+Print(true);
+
+vector_n vn1 := 3 [1, 2, 3];
+vector_n vn2 := 3 [4, 5, 6];
+
+// Basic operations
+vector_n sum_vn := vn1 add_v vn2;
+int dot_vn := vn1 dot_v vn2;
+float mag_vn := mag_v vn1;
+float ang_vn := vn1 ang_v vn2;
+
+// Scalar operations
+vector_n scal_vn1 := 2 scal_v vn1;
+vector_n scal_vn2 := 3 scal_v vn2;
+
+// Printing results
+Print(sum_vn);      // Should print 3 [5, 7, 9]
+Print(dot_vn);      // Should print 32
+Print(mag_vn);      // Should print magnitude of vn1 ~ 3.7417 
+Print(ang_vn);      // Should print angle in radians ~ 0.2257
+Print(scal_vn1);    // Should print 3 [2, 4, 6]
+Print(scal_vn2);    // Should print 3 [3, 6, 9]
+
+
+/* =================== VECTOR_F TESTS =================== */
+
+Print(true);
+
+vector_f vf1 := 3 [1.5, 2.5, 3.5];
+vector_f vf2 := 3 [4.0, 5.0, 6.0];
+
+// Basic operations
+vector_f sum_vf := vf1 add_v vf2;
+float dot_vf := vf1 dot_v vf2;
+float mag_vf := mag_v vf1;
+float ang_vf := vf1 ang_v vf2;
+
+// Scalar operations
+vector_f scal_vf1 := 2.5 scal_v vf1;    // Mandatory to ensure that vector is on right
+vector_f scal_vf2 := 1.5 scal_v vf2;    // Mandtory to ensure that numerical scalar is on left
+
+Print(sum_vf);      // Should print 3 [5.5, 7.5, 9.5]
+Print(dot_vf);      // Should print 39.5
+Print(mag_vf);      // Should print ~4.5552
+Print(ang_vf);      // Should print angle in radians ~0.154
+Print(scal_vf1);    // Should print 3 [3.75, 6.25, 8.75]
+Print(scal_vf2);    // Should print 3 [6.00, 7.50, 9.00]
+
+/* ================= MIXED TYPE TESTS ================== */
+
+Print(true);
+
+// Type promotion tests
+vector_f prom1 := vn1 add_v vf1;    // int + float vector
+vector_f prom2 := 2 scal_v vf1;     // int scalar * float vector
+vector_f prom3 := 2.5 scal_v vn1;   // float scalar * int vector
+
+// Dimension checks
+int dim_vn := dim_v vn1;
+int dim_vf := dim_v vf1;
+dot_vf := vf1 dot_v vn1;            // float vector * int vector - Also reuse of old variable (assignment without type once already defined)
+int dim_prom := dim_v prom1;
+
+Print(prom1);       // Should print 3 [2.5, 4.5, 6.5]
+Print(prom2);       // Should print 3 [3.0, 5.0, 7.0]
+Print(prom3);       // Should print 3 [2.5, 5.0, 7.5]
+Print(dim_vn);      // Should print 3
+Print(dim_vf);      // Should print 3
+Print(dot_vf);      // Should print 17.0
+Print(dim_prom);    // Should print 3
+
+
+/* ================ EDGE CASE TESTING ================= */
+
+Print(true);
+
+// Zero vectors
+vector_n zero_vn := 3 [0, 0, 0];
+vector_f zero_vf := 3 [0.0, 0.0, 0.0];
+
+// Zero scalar operations
+vector_n zero_scaled_n := 0 scal_v vn1;
+vector_f zero_scaled_f := 0.0 scal_v vf1;
+
+// Empty vector (should throw error) - Try uncommenting this and running - build/prog_test test/prog/p2
+// vector_n empty_vn := def_vn 0;
+
+Print(zero_scaled_n);  // Should print 3 [0, 0, 0]
+Print(zero_scaled_f);  // Should print 3 [0.0, 0.0, 0.0]
+Print(dim_v zero_vn);  // Should print 3
+
+/* ============== TYPE PROMOTION CHECKS =============== */
+
+Print(true);
+
+// Mixed scalar types
+vector_f prom4 := 2 scal_v vf1;      // int scalar * float vector
+vector_f prom5 := 2.5 scal_v vn1;    // float scalar * int vector
+vector_f prom6 := 1.5 scal_v vn1;    // int vector * float scalar
+
+Print(prom4);  // Should print 3 [3.0, 5.0, 7.0]
+Print(prom5);  // Should print 3 [2.5, 5.0, 7.5]
+Print(prom6);  // Should print 3 [1.5, 3.0, 4.5]
+
+// Chained operations with promotion
+vector_f chain_op := (1.5 scal_v vn1) add_v (2 scal_v vf1);
+Print(chain_op);  // Should print 3 [4.5, 8.0, 11.5]

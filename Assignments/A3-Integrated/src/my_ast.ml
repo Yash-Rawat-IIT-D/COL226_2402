@@ -95,13 +95,13 @@ let mat_n_i (mat : matrix_int) (i:int) =
     mat_i mat i
   with
     | Dimension_Mismatch _ -> let (row,col) = mat_dim mat in raise(Dimension_Mismatch("Invalid Row Indexing into int matrix of dimensions : [" 
-    ^ string_of_int row ^ "," ^ string_of_int col ^ "], access row index provided :" ^ string_of_int i))
+    ^ string_of_int row ^ "," ^ string_of_int col ^ "], access row index provided : " ^ string_of_int i))
 let mat_f_i (mat : matrix_fl) (i:int) = 
   try 
     mat_i mat i
   with
     | Dimension_Mismatch _ -> let (row,col) = mat_dim mat in raise(Dimension_Mismatch("Invalid Row Indexing into float matrix of dimensions : [" 
-    ^ string_of_int row ^ "," ^ string_of_int col ^ "], access row index provided :" ^ string_of_int i))
+    ^ string_of_int row ^ "," ^ string_of_int col ^ "], access row index provided : " ^ string_of_int i))
 
 let mat_i_j mat i j = 
   let (row,col) = mat_dim mat in
@@ -120,7 +120,7 @@ let mat_n_i_j (mat : matrix_int) (i:int) (j:int) =
   | Dimension_Mismatch s -> 
     let (m,n) = mat_dim mat in
     raise(Dimension_Mismatch("Invalid Indexing into int matrix of dimensions : [" 
-    ^ string_of_int m ^ "," ^ string_of_int n ^ "], row index provided :" ^ string_of_int i))
+    ^ string_of_int m ^ "," ^ string_of_int n ^ "], row index provided : " ^ string_of_int i ^ " col index provided : " ^ string_of_int j))
 let mat_f_i_j (mat : matrix_fl) (i:int) (j:int) = 
   try 
     mat_i_j mat i j
@@ -128,7 +128,7 @@ let mat_f_i_j (mat : matrix_fl) (i:int) (j:int) =
   | Dimension_Mismatch s -> 
     let (m,n) = mat_dim mat in
     raise(Dimension_Mismatch("Invalid Indexing into float matrix of dimensions : [" 
-    ^ string_of_int m ^ "," ^ string_of_int n ^ "], row index provided :" ^ string_of_int i)) 
+    ^ string_of_int m ^ "," ^ string_of_int n ^ "], row index provided : " ^ string_of_int i ^  " col index provided : " ^ string_of_int j)) 
 let update_vec_i dest_vec value i =
   let len = List.length dest_vec in
   if i < 0 || i >= len then
@@ -198,7 +198,7 @@ let add_mat_f m1 m2 =
     raise (Dimension_Mismatch("Matrix column dimensions not same for addition"))
   else
     List.map2 (fun r1 r2 -> add_vec_f r1 r2) m1 m2
-
+    
 (* Vector scalar multiplication *)
 let scal_n_vec_n scalar vec =
   List.map (fun x -> scalar * x) vec
@@ -733,7 +733,7 @@ let string_of_binop op =
   | Scal_Mat -> "scal_m"
   | Mat_Mul_Mat -> "mat_mul"
   | Def_mf -> "def_mf"
-  | Def_mn -> "def_nf"
+  | Def_mn -> "def_mn"
 
 let err_string_of_binop op = match op with
   | Add -> "Type mismatch in binary addition (scalars)"
@@ -749,9 +749,9 @@ let err_string_of_binop op = match op with
   | Lt -> "Type mismatch in binary Lt(<) (Expected bool expressions)"
   | Geq -> "Type mismatch in binary Geq(>=) (Expected int expressions)"
   | Leq -> "Type mismatch in binary Leq(==) (Expected int expressions)"
-  | Dot_Prod -> "Type mismatch in binary Dot_Prod (Expected vector of same types !)"
+  | Dot_Prod -> "Type mismatch in binary Dot_Prod (Expected vector same dimensions for both arguments!)"
   | Angle -> "Type mismatch in binary Angle (Expected vector of same types !)"
-  | Add_Vec -> "Type mismatch in binary Add_Vec (Expected vector of same types !)"
+  | Add_Vec -> "Type mismatch in binary Add_Vec (Expected vector of same dimensions for both arguments !)"
   | Scal_Vec -> "Type mismatch in binary Scal_Vec (Scalar,Vector type expressions expected )"
   | Add_Mat -> "Type mismatch in binary Add_Mat (Expected matrix of same types !)"
   | Scal_Mat -> "Type mismatch in binary Scal_Mat (Scalar,Matrix of type expressions expected !)"

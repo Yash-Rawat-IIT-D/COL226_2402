@@ -1,0 +1,29 @@
+Parsing successful!
+Parsed program:
+integer_matrix mat := input("mat1.txt")
+print(true)
+print(mat)
+integer_matrix builtin_trans := (trp_mat mat)
+print(builtin_trans)
+integer rows := (dim mat)
+integer cols := (dim mat[0])
+integer_matrix manual_trans := (cols def_mn rows)
+print(true)
+print(manual_trans)
+for (integer i := 0; (i < rows); i := (i + 1)) {
+for (integer j := 0; (j < cols); j := (j + 1)) {
+manual_trans[j][i] := mat[i][j]
+}
+}
+print(true)
+print(manual_trans)
+
+Executing program...
+true
+3 4 [[1, 2, 3, 4], [4, 5, 6, 7], [8, 9, 10, 11]]
+4 3 [[1, 4, 8], [2, 5, 9], [3, 6, 10], [4, 7, 11]]
+true
+4 3 [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]
+true
+4 3 [[1, 4, 8], [2, 5, 9], [3, 6, 10], [4, 7, 11]]
+Program execution completed successfully.

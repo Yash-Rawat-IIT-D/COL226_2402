@@ -1,13 +1,14 @@
-(* env.ml - Handles definitions related to scoping of variables *)
+(*===================================================================================*)
+              (* Environment Specifications - COL226 Assignment 3 - 2023CS50334 *)  
+             (* env.ml - Handles definitions related to scoping of variables *)
+(*===================================================================================*)
 
 open My_ast 
 
-(*===================================================================================*)
-                      (* We will be using a stack based environment *)
-(*===================================================================================*)
-
 exception Var_Not_Found of string
 exception Empty_Env of string
+
+(* We will be using a stack based environment *)
 
 type env_frame = (string * typ * value)
 

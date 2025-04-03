@@ -1,0 +1,53 @@
+/* Vector and Matrix Element Access Test */
+
+// Vector element access and modification
+vector_n vec := 5 [10, 20, 30, 40, 50];
+Print(vec);          // Original vector
+
+int first := vec[0];
+Print(first);        // Should print 10
+
+vec[1] := 27;
+Print(vec);          // Modified second element
+
+int last := vec[4];
+Print(last);         // Should print 50
+
+
+// Matrix row and element access
+matrix_n mat := 3 3 [
+    [1, 2, 3],
+    [4, 5, 6],
+    [7, 8, 9]
+];
+Print(mat);          // Original matrix
+
+// Access and modify entire row
+vector_n row2 := mat[1];
+Print(row2);         // Should print [4, 5, 6]
+
+mat[0] := 3 [10, 11, 12];
+Print(mat);          // Observe the Modified first row
+
+// Nested element access
+int top_right := mat[0][2];
+Print(top_right);    // Should print 12
+
+// Modify matrix element
+mat[2][1] := 88;
+Print(mat[2]);       // Modified third row
+Print(mat);          // Full modified matrix
+
+// Edge cases
+vector_n single_element_vec := 1 [100];
+Print(single_element_vec[0]);  // Should print 100
+
+matrix_n wide_mat := 2 4 [
+    [1, 2, 3, 4],
+    [5, 6, 7, 8]
+];
+
+vector_n extract_col := 4 [0, 0, 0, 1];
+
+vector_n last_col := wide_mat mul_mv extract_col;   // Matrix-vector multiplication - Will be discussed in more details in another test case
+Print(last_col);     // Should print [4, 8]

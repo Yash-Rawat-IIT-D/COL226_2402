@@ -1,0 +1,78 @@
+/* Matrix Inversion Program */
+
+// Read matrix from file
+matrix_n mat := Input("mat2.txt");
+Print(true);
+Print(mat);
+
+/* ========== Built-in Inverse ========== */
+matrix_f builtin_inv := inv mat;
+Print(true);
+Print(builtin_inv);
+
+/* ========== Manual Inverse ========== */
+// Step 1: Check if matrix is square
+int rows := dim_v(mat);
+int cols := dim_v(mat[0]);
+
+Print(true);
+Print(rows);
+Print(cols);
+
+
+if rows != cols then {
+    Print(false);
+} else {
+    Print(true);
+    // Step 2: Calculate determinant
+    int det := det_m mat; // Will be errorfull since explicit type conversion is not supported
+
+    Print(det);
+    
+    if det = 0 then {
+        Print(false);
+    } else {
+        Print(true);
+        matrix_f cofactors := cols def_mf rows;
+    
+        for (int i := 0; i < rows; i := i + 1;) {
+            for (int j := 0; j < rows; j := j + 1;) {
+                // Calculate minor matrix
+                matrix_n minor := (cols - 1) def_mn (rows - 1);
+                int minor_row := 0;
+                
+                for (int x := 0; x < rows; x := x + 1;) {
+                    if x != i then {
+                        int minor_col := 0;
+                        
+                        for (int y := 0; y < rows; y := y + 1;) {
+                            if y != j then {
+                                minor[minor_row][minor_col] := mat[x][y];
+                                minor_col := minor_col + 1;
+                            }
+                        }
+                        minor_row := minor_row + 1;
+                    
+                    }   
+                }
+                
+                // Calculate cofactor
+                float sign := ((i+j) mod 2 = 0) ? 1.0 : -1.0;
+                cofactors[i][j] := sign * (det_m minor);
+
+            }
+        }
+        
+        // Step 4: Transpose to get adjugate
+        matrix_f adjugate := transp_m cofactors;
+        Print(true);
+        Print(adjugate);
+        
+        // Step 5: Divide by determinant
+        matrix_f manual_inv := (1.0 / det) scal_m adjugate;
+        Print(true);
+        Print(manual_inv);
+    }
+        
+}
+

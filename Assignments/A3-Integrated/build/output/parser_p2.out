@@ -1,0 +1,98 @@
+Parsing successful!
+Parsed program:
+print(true)
+integer_vector vn1 := 3 [1, 2, 3]
+integer_vector vn2 := 3 [4, 5, 6]
+integer_vector sum_vn := (vn1 add_v vn2)
+integer dot_vn := (vn1 dot_prod vn2)
+float mag_vn := (mag_v vn1)
+float ang_vn := (vn1 angle vn2)
+integer_vector scal_vn1 := (2 scal_v vn1)
+integer_vector scal_vn2 := (3 scal_v vn2)
+print(sum_vn)
+print(dot_vn)
+print(mag_vn)
+print(ang_vn)
+print(scal_vn1)
+print(scal_vn2)
+print(true)
+float_vector vf1 := 3 [1.5, 2.5, 3.5]
+float_vector vf2 := 3 [4., 5., 6.]
+float_vector sum_vf := (vf1 add_v vf2)
+float dot_vf := (vf1 dot_prod vf2)
+float mag_vf := (mag_v vf1)
+float ang_vf := (vf1 angle vf2)
+float_vector scal_vf1 := (2.5 scal_v vf1)
+float_vector scal_vf2 := (1.5 scal_v vf2)
+print(sum_vf)
+print(dot_vf)
+print(mag_vf)
+print(ang_vf)
+print(scal_vf1)
+print(scal_vf2)
+print(true)
+float_vector prom1 := (vn1 add_v vf1)
+float_vector prom2 := (2 scal_v vf1)
+float_vector prom3 := (2.5 scal_v vn1)
+integer dim_vn := (dim vn1)
+integer dim_vf := (dim vf1)
+dot_vf := (vf1 dot_prod vn1)
+integer dim_prom := (dim prom1)
+print(prom1)
+print(prom2)
+print(prom3)
+print(dim_vn)
+print(dim_vf)
+print(dot_vf)
+print(dim_prom)
+print(true)
+integer_vector zero_vn := 3 [0, 0, 0]
+float_vector zero_vf := 3 [0., 0., 0.]
+integer_vector zero_scaled_n := (0 scal_v vn1)
+float_vector zero_scaled_f := (0. scal_v vf1)
+print(zero_scaled_n)
+print(zero_scaled_f)
+print((dim zero_vn))
+print(true)
+float_vector prom4 := (2 scal_v vf1)
+float_vector prom5 := (2.5 scal_v vn1)
+float_vector prom6 := (1.5 scal_v vn1)
+print(prom4)
+print(prom5)
+print(prom6)
+float_vector chain_op := ((1.5 scal_v vn1) add_v (2 scal_v vf1))
+print(chain_op)
+
+Executing program...
+true
+3 [5, 7, 9]
+32
+3.741657
+0.225726
+3 [2, 4, 6]
+3 [12, 15, 18]
+true
+3 [5.5, 7.5, 9.5]
+39.500000
+4.555217
+0.153807
+3 [3.75, 6.25, 8.75]
+3 [6., 7.5, 9.]
+true
+3 [2.5, 4.5, 6.5]
+3 [3., 5., 7.]
+3 [2.5, 5., 7.5]
+3
+3
+17.000000
+3
+true
+3 [0, 0, 0]
+3 [0., 0., 0.]
+3
+true
+3 [3., 5., 7.]
+3 [2.5, 5., 7.5]
+3 [1.5, 3., 4.5]
+3 [4.5, 8., 11.5]
+Program execution completed successfully.

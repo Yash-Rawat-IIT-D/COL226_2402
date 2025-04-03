@@ -1,0 +1,29 @@
+Parsing successful!
+Parsed program:
+integer n := input()
+if (n < 0) then {
+print(false)
+} else {
+integer a := 0
+integer b := 1
+print(a)
+if (n >= 1) then {
+print(b)
+if (n >= 2) then {
+integer i := 2
+while (i <= n) {
+integer c := (a + b)
+print(c)
+a := b
+b := c
+i := (i + 1)
+}
+}
+}
+}
+
+Executing program...
+====> 0
+1
+1
+Program execution completed successfully.
