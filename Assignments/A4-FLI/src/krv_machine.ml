@@ -85,7 +85,7 @@ exception Invalid_Exp of string
 module Krv_Env = struct
 
   exception Var_Not_Found of string
-  let hash_table_size_init = 8
+  let hash_table_size_init = 4
 
   (** Creates new environment node for lexical scoping 
     - Initializes empty hashtable for variable bindings
