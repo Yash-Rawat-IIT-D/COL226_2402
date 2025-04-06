@@ -144,28 +144,34 @@ module SECD_Env = struct
  (** Debug utility to print environment chain from a reference
     - Dereferences environment pointer before traversal
     - Recursively displays all variables and their bindings along the chain *)
+  
 
   let print_env (env : secd_env ref) =
-    let rec aux current_env =
-      Printf.printf "SECD Environment:\n";
-      Hashtbl.iter (fun k v -> 
-        match v with
-        | Prim(prim_val) -> (
-            match prim_val with
-            | N(n) -> Printf.printf "  Variable: %s => Integer: %d\n" k n
-            | B(b) -> Printf.printf "  Variable: %s => Boolean: %b\n" k b
-          )
-        | Clos(clos) -> 
-            Printf.printf "  Variable: %s => <Closure>\n" k
-      ) current_env.bindings;
+    let env_count = ref 0 in
+    let rec aux current_env depth =
+      incr env_count;
+      let indent = String.make (depth * 2) ' ' in
+      Printf.printf "%sEnvironment #%d (%d bindings):\n" 
+        indent !env_count (Hashtbl.length current_env.bindings);
+      
+      if Hashtbl.length current_env.bindings = 0 then
+        Printf.printf "%s  <empty>\n" indent
+      else
+        Hashtbl.iter (fun k v -> 
+          match v with
+          | Prim(N n) -> Printf.printf "%s  %s => Integer: %d\n" indent k n
+          | Prim(B b) -> Printf.printf "%s  %s => Boolean: %b\n" indent k b
+          | Clos(clos) -> Printf.printf "%s  %s => <Closure: λ%s>\n" indent k clos.param
+        ) current_env.bindings;
+        
       match !(current_env.parent) with
       | Some p -> 
-          Printf.printf "Parent Environment:\n";
-          aux p
+          Printf.printf "%sParent:\n" indent;
+          aux p (depth + 1)
       | None -> 
-          Printf.printf "No parent environment\n"
+          Printf.printf "%s<No parent environment>\n" indent
     in
-    aux !env
+    aux !env 0
 
 
   end
@@ -220,13 +226,19 @@ module SECD_Stack = struct
   (** Debug utility to print all elements in the stack
       @param stack The current stack *)
   let print_stack (stack : secd_stack) =
-    Printf.printf "SECD Stack:\n";
-    List.iteri (fun i v ->
-      match v with
-      | Prim(N n) -> Printf.printf "  [%d]: Integer: %d\n" i n
-      | Prim(B b) -> Printf.printf "  [%d]: Boolean: %b\n" i b
-      | Clos(clos) -> Printf.printf "  [%d]: <Closure>\n" i
-    ) stack
+    let depth = List.length stack in
+    Printf.printf "SECD Stack (%d items):\n" depth;
+    if depth = 0 then
+      Printf.printf "  <empty stack>\n"
+    else
+      List.iteri (fun i v ->
+        let position = depth - i - 1 in (* Show stack position from bottom *)
+        let marker = if i = 0 then "TOP→ " else "     " in
+        match v with
+        | Prim(N n) -> Printf.printf "  %s[%d]: Integer: %d\n" marker position n
+        | Prim(B b) -> Printf.printf "  %s[%d]: Boolean: %b\n" marker position b
+        | Clos(clos) -> Printf.printf "  %s[%d]: <Closure: λ%s>\n" marker position clos.param
+      ) (List.rev stack) (* Print from top to bottom *)
 
 end
 
@@ -262,7 +274,7 @@ module SECD_Code = struct
     | Or(e1, e2) -> compile e1 @ compile e2 @ [OR]  (* Logical OR *)
     | Eq(e1, e2) -> compile e1 @ compile e2 @ [EQ]  (* Equality comparison *)
     | Gt(e1, e2) -> compile e1 @ compile e2 @ [GT]  (* Greater-than comparison *)
-    | _ -> raise (Unsupported_Expression "Expression cannot be compiled") (* Not needed if all cases mentioned !*)
+    (* | _ -> raise (Unsupported_Expression "Expression cannot be compiled") Not needed if all cases mentioned ! *)
 
   (** Concatenates two opcode lists
       @param code1 First opcode list
@@ -271,26 +283,48 @@ module SECD_Code = struct
   let concat_code (code1 : secd_code) (code2 : secd_code) : secd_code =
     code1 @ code2
 
-  (** Prints the opcode list in a human-readable format
+  (** Prints the opcode list in a human-readable format with pretty formatting
+      Which also enables us to visualize the abstraction calls easily
       @param code The opcode list to print *)
-  let print_code (code : secd_code) =
-    Printf.printf "SECD Code:\n";
-    List.iter (fun op ->
-      match op with
-      | LDN n -> Printf.printf "  LDN %d\n" n
-      | LDB b -> Printf.printf "  LDB %b\n" b
-      | LOOKUP x -> Printf.printf "  LOOKUP %s\n" x
-      | MKCLOS(param, body) -> Printf.printf "  MKCLOS %s <body>\n" param
-      | APP -> Printf.printf "  APP\n"
-      | RET -> Printf.printf "  RET\n"
-      | ADD -> Printf.printf "  ADD\n"
-      | MUL -> Printf.printf "  MUL\n"
-      | NOT -> Printf.printf "  NOT\n"
-      | AND -> Printf.printf "  AND\n"
-      | OR -> Printf.printf "  OR\n"
-      | EQ -> Printf.printf "  EQ\n"
-      | GT -> Printf.printf "  GT\n"
-    ) code
+  let rec print_code ?(current_pos=0) ?(ntabs=0) (code : secd_code) =
+    let indent = String.make (ntabs * 2) '\t' in
+    let total = List.length code in
+    Printf.printf "%sSECD Code (%d instructions):\n" indent total;
+    if total = 0 then
+      Printf.printf "%s  <no code>\n" indent
+    else
+      List.iteri (fun i op ->
+        let marker = if i = current_pos then "→" else " " in
+        match op with
+        | LDN n -> 
+            Printf.printf "%s%s%3d: LDN %d\n" indent marker i n
+        | LDB b -> 
+            Printf.printf "%s%s%3d: LDB %b\n" indent marker i b
+        | LOOKUP x -> 
+            Printf.printf "%s%s%3d: LOOKUP \"%s\"\n" indent marker i x
+        | MKCLOS(param, body) -> 
+            Printf.printf "%s%s%3d: MKCLOS \"%s\" <%d instructions>\n" 
+              indent marker i param (List.length body);
+            print_code ~ntabs:(ntabs+1) body
+        | APP -> 
+            Printf.printf "%s%s%3d: APP\n" indent marker i
+        | RET -> 
+            Printf.printf "%s%s%3d: RET\n" indent marker i
+        | ADD -> 
+            Printf.printf "%s%s%3d: ADD\n" indent marker i
+        | MUL -> 
+            Printf.printf "%s%s%3d: MUL\n" indent marker i
+        | NOT -> 
+            Printf.printf "%s%s%3d: NOT\n" indent marker i
+        | AND -> 
+            Printf.printf "%s%s%3d: AND\n" indent marker i
+        | OR -> 
+            Printf.printf "%s%s%3d: OR\n" indent marker i
+        | EQ -> 
+            Printf.printf "%s%s%3d: EQ\n" indent marker i
+        | GT -> 
+            Printf.printf "%s%s%3d: GT\n" indent marker i
+      ) code
 
 end
 
@@ -614,16 +648,23 @@ module SECD_Machine = struct
   (** Prints the current state of the machine
       @param state Current machine state *)
   let print_state state =
-    Printf.printf "SECD Machine State:\n";
-    Printf.printf "Stack:\n";
-    List.iter (fun v ->
-      match v with
-      | Prim(N n) -> Printf.printf "  Integer: %d\n" n
-      | Prim(B b) -> Printf.printf "  Boolean: %b\n" b
-      | Clos _ -> Printf.printf "  <Closure>\n"
-    ) state.stack;
-    Printf.printf "Environment: <env>\n";
-    Printf.printf "Code: %d instructions\n" (List.length state.code);
-    Printf.printf "Dump: %d entries\n" (List.length state.dump)
+    Printf.printf "\n========== SECD MACHINE STATE ==========\n\n";
+    
+    (* Print stack *)
+    SECD_Stack.print_stack state.stack;
+    Printf.printf "\n";
+    
+    (* Print environment *)
+    Printf.printf "Current Environment:\n";
+    SECD_Env.print_env state.env;
+    Printf.printf "\n";
+    
+    (* Print code *)
+    SECD_Code.print_code state.code;
+    Printf.printf "\n";
+    
+    (* Print dump *)
+    SECD_Dump.print_dump state.dump;
+    Printf.printf "\n======================================\n\n"
     
 end
