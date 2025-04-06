@@ -81,9 +81,8 @@ type secd_state = {
 }
 
 
-
 (*===================================================================================*)
-
+                  (* Modular Implementaion of SECD Stack Machine *)
 (*===================================================================================*)
 
 (** SECD_Env - Environment Management for the SECD Machine
@@ -98,7 +97,6 @@ type secd_state = {
     - **Variable Binding**: Maps variables to fully evaluated values or closures.
     - **Lexical Scoping**: Resolves variables by traversing parent references up the chain.
     - **Debugging Utilities**: Provides functions to inspect and print environments. *)
-
 module SECD_Env = struct
 
   (** Exception raised when a variable is not found in any environment *)
@@ -172,6 +170,15 @@ module SECD_Env = struct
 
   end
 
+(** SECD_Stack - Stack Management for the SECD Abstract Machine
+  
+    This module manages the Stack (S) component of the SECD machine, which stores
+    intermediate values during evaluation. The stack contains fully evaluated values
+    (primitives or closures) that represent the results of subexpressions that have
+    already been computed according to call-by-value semantics.
+  
+    Key operations include pushing values onto the stack, popping values for use in
+    operations, and inspecting the stack state during execution. *)
 module SECD_Stack = struct
 
   (** Exception raised when attempting to pop from an empty stack *)
@@ -223,6 +230,16 @@ module SECD_Stack = struct
 
 end
 
+(** SECD_Code - Code Generation and Management for the SECD Abstract Machine
+  
+    This module handles the Code (C) component of the SECD machine, responsible for
+    compiling abstract syntax trees into sequences of opcodes and managing code
+    execution. The code represents the remaining instructions to be executed in the
+    current context.
+    
+    The compilation process implements a post-order traversal of expression trees,
+    generating appropriate opcodes for each language construct according to
+    call-by-value evaluation strategy. *)
 module SECD_Code = struct
 
   (** Exception raised for unsupported expressions during compilation *)
@@ -277,6 +294,17 @@ module SECD_Code = struct
 
 end
 
+(** SECD_Dump - Continuation Management for the SECD Abstract Machine
+  
+    This module implements the Dump (D) component of the SECD machine, which stores
+    suspended computation contexts during function calls. Each dump entry contains
+    references to a saved (S,E,C) triple that represents the state to which control
+    should return after a function call completes.
+    
+    As noted in the formal specification, the dump uses references to environment
+    structures rather than copying them, ensuring memory efficiency while maintaining
+    proper lexical scoping across function boundaries. *)
+
 module SECD_Dump = struct
 
   (** Exception raised when attempting to pop from an empty dump *)
@@ -287,9 +315,7 @@ module SECD_Dump = struct
       @param env_ref Reference to the current environment (E)
       @param code_ref Reference to the current code (C)
       @return A new (S, E, C) triple *)
-  let create_triple (stack_ref : secd_stack ref) 
-                    (env_ref : secd_env ref) 
-                    (code_ref : secd_code ref) : secd_triple = 
+  let create_triple (stack_ref : secd_stack ref) (env_ref : secd_env ref) (code_ref : secd_code ref) : secd_triple = 
     { st = stack_ref; env = env_ref; cd = code_ref }
 
   (** Pushes a new triple onto the dump
@@ -358,3 +384,246 @@ module SECD_Dump = struct
 
 end
 
+(** 
+  SECD_Machine - Core implementation of the SECD Abstract Machine
+  
+  This module implements the SECD (Stack, Environment, Code, Dump) machine
+  for call-by-value evaluation of lambda calculus with arithmetic operations.
+  The machine operates through state transitions based on opcodes, following
+  the formal semantics described in the lecture notes.
+*)
+module SECD_Machine = struct
+  
+  (** Exception raised when the machine reaches a non-terminal stuck state *)
+  exception Stuck of string
+  
+  (** Exception raised when a variable lookup fails in the environment *)
+  exception Var_Not_Found of string
+  
+  (** Creates a new machine state with the given components *)
+  let create_state (stack :secd_stack) (env : secd_env ref) (code : secd_code) (dump : secd_triple list) : secd_state =
+    { stack; env; code; dump }
+    
+  (** Initializes the machine with a compiled expression
+      - Compiles the provided expression into opcodes
+      - Uses Default (empty) initializations of env as well as dump 
+      @return A new secd_state comprising of above specifications *)
+
+  let init expr =
+    let compiled_code = SECD_Code.compile expr in
+    let empty_env = ref (SECD_Env.create ()) in
+    { stack = []; env = empty_env; code = compiled_code; dump = [] }
+  
+  (** Performs one transition step according to SECD rules 
+      As discussed in theory *)
+  let step state =
+    match state.code with
+    | [] -> 
+          (* No more op-codes left to execute *)
+        if state.dump = [] then
+          (* Terminal state - Execution completed , Stack Machine terminated successfully *)
+          state
+        else
+          (* In a correctly typed expr , any abstraction call should include RET opcode at the end
+             And hence return to the context present at the time of call, failing to do so would result 
+             in a non empty dump at the end *)
+          raise (Stuck "Code Exhausted but Dump not empty")
+          
+    | op :: rest_code ->
+        match op with
+        | LDN n ->
+            (* Load numeric constant onto stack *)
+            { state with 
+              stack = Prim(N n) :: state.stack;
+              code = rest_code }
+              
+        | LDB b ->
+            (* Load boolean constant onto stack *)
+            { state with 
+              stack = Prim(B b) :: state.stack;
+              code = rest_code }
+              
+        | LOOKUP x ->
+            (* Look up variable in environment *)
+            (try
+              let value = SECD_Env.lookup !(state.env) x in
+              { state with 
+                stack = value :: state.stack;
+                code = rest_code }
+            with
+              SECD_Env.Var_Not_Found _ -> 
+                raise (Var_Not_Found ("Unbound variable: Not found in the current Environment : " ^ x)))
+                
+        | MKCLOS(param, body_code) ->
+            (* Create closure and push onto stack *)
+            let closure = Clos { 
+              param; 
+              code = body_code; 
+              env = ref !(state.env) 
+            } in
+            { state with 
+              stack = closure :: state.stack;
+              code = rest_code }
+              
+        | APP ->
+            (* Function application *)
+            (match state.stack with
+            | arg :: Clos({ param; code = body_code; env = clos_env }) :: rest_stack ->
+                (* Create new environment with argument binding - Augementing the old env *)
+                let new_env = SECD_Env.create ~parent:(Some !(clos_env)) () in
+                SECD_Env.add_binding new_env param arg;
+                
+                (* Making a new triple for saving current state in dump *)
+                let triple = {
+                  st = ref rest_stack;
+                  env = state.env;
+                  cd = ref rest_code
+                } in
+                
+                (* New state with empty stack, new environment, and closure body code *)
+                { stack = [];
+                  env = ref new_env;
+                  code = body_code;
+                  dump = triple :: state.dump }
+                  
+            | _ -> raise (Stuck "Invalid stack for APP opcode : stack should have form : a::⟨⟨⟨x,c′,γ'⟩⟩⟩::S,
+                                \n Where a represents argument bound to parameter x"))
+            
+        | RET ->
+            (* Return from function call *)
+            (match state.stack, state.dump with
+            | [result], triple :: rest_dump ->
+                (* Restoring SEC triple from dump and push result onto stack *)
+                { stack = result :: !(triple.st);
+                  env = triple.env;
+                  code = !(triple.cd);
+                  dump = rest_dump }
+                  
+            | _, [] -> raise (Stuck "RET with empty dump : No Context found to return to after abstraction call")
+            | _, _ -> raise (Stuck "Invalid stack for RET opcode : Function Call's should end with only one answer
+                                    on current context's stack"))
+            
+        | ADD ->
+            (* Addition operation *)
+            (match state.stack with
+            | Prim(N n2) :: Prim(N n1) :: rest_stack ->
+                { state with
+                  stack = Prim(N (n1 + n2)) :: rest_stack;
+                  code = rest_code }
+            | _ -> raise (Stuck "Invalid stack for ADD opcode : Expected atleast two arguments on stack to be of primitive 
+                                \n value type with integer associated values"))
+            
+        | MUL ->
+            (* Multiplication operation *)
+            (match state.stack with
+            | Prim(N n2) :: Prim(N n1) :: rest_stack ->
+                { state with
+                  stack = Prim(N (n1 * n2)) :: rest_stack;
+                  code = rest_code }
+            | _ -> raise (Stuck "Invalid stack for MUL opcode : Expected atleast two arguments on stack to be of primitive 
+                                \n value type with integer associated values"))
+            
+        | NOT ->
+            (* Logical NOT operation *)
+            (match state.stack with
+            | Prim(B b) :: rest_stack ->
+                { state with
+                  stack = Prim(B (not b)) :: rest_stack;
+                  code = rest_code }
+            | _ -> raise (Stuck "Invalid stack for NOT opcode : Expected atleast one argument on stack to be of primitive 
+                                \n value type with boolean associated value"))
+            
+        | AND ->
+            (* Logical AND operation *)
+            (match state.stack with
+            | Prim(B b2) :: Prim(B b1) :: rest_stack ->
+                { state with
+                  stack = Prim(B (b1 && b2)) :: rest_stack;
+                  code = rest_code }
+            | _ -> raise (Stuck "Invalid stack for AND opcode : Expected atleast two arguments on stack to be of primitive 
+                                \n value type with boolean associated values"))
+            
+        | OR ->
+            (* Logical OR operation *)
+            (match state.stack with
+            | Prim(B b2) :: Prim(B b1) :: rest_stack ->
+                { state with
+                  stack = Prim(B (b1 || b2)) :: rest_stack;
+                  code = rest_code }
+            | _ -> raise (Stuck "Invalid stack for OR opcode : Expected atleast two arguments on stack to be of primitive 
+                                \n value type with boolean associated values"))
+            
+        | EQ ->
+            (* Equality comparison - Differs from the classic only integer comparison, possible on any primitve type *)
+            (match state.stack with
+            | Prim(N n2) :: Prim(N n1) :: rest_stack ->
+                { state with
+                  stack = Prim(B (n1 = n2)) :: rest_stack;
+                  code = rest_code }
+            | Prim(B b2) :: Prim(B b1) :: rest_stack ->
+                { state with
+                  stack = Prim(B (b1 = b2)) :: rest_stack;
+                  code = rest_code }
+            | _ -> raise (Stuck "Invalid stack for EQ opcode : Expected atleast two arguments on stack to be of primitive 
+                                \n value type"))
+            
+        | GT ->
+            (* Greater-than comparison *)
+            (match state.stack with
+            | Prim(N n2) :: Prim(N n1) :: rest_stack ->
+                { state with
+                  stack = Prim(B (n1 > n2)) :: rest_stack;
+                  code = rest_code }
+            | _ -> raise (Stuck "Invalid stack for GT opcode : Expected atleast two arguments on stack to be of primitive 
+                                \n value type with integer associated values"))
+  
+  (** Executes the machine until termination
+      @param initial_state Starting machine state
+      @return Final state with result on top of stack
+      @raise Stuck if machine gets stuck in a non-terminal state *)
+  let execute initial_state =
+    let rec exec_loop current_state =
+      try
+        let next_state = step current_state in
+        if next_state = current_state then
+          (* Fixed point reached - machine halted *)
+          current_state
+        else
+          exec_loop next_state
+      with
+        | Stuck msg -> 
+            Printf.printf "Machine stuck: %s\n" msg;
+            raise (Stuck msg)
+        | Var_Not_Found var ->
+            Printf.printf "Variable not found: %s\n" var;
+            raise (Var_Not_Found var)
+    in
+    exec_loop initial_state
+    
+  (** Evaluates an expression to a value
+      @param expr Expression to evaluate
+      @return Resulting value
+      @raise Stuck if evaluation gets stuck *)
+  let eval expr =
+    let final_state = execute (init expr) in
+    match final_state.stack with
+    | [result] -> result
+    | [] -> raise (Stuck "Evaluation completed with empty stack")
+    | _ -> raise (Stuck "Evaluation completed with multiple values on stack")
+    
+  (** Prints the current state of the machine
+      @param state Current machine state *)
+  let print_state state =
+    Printf.printf "SECD Machine State:\n";
+    Printf.printf "Stack:\n";
+    List.iter (fun v ->
+      match v with
+      | Prim(N n) -> Printf.printf "  Integer: %d\n" n
+      | Prim(B b) -> Printf.printf "  Boolean: %b\n" b
+      | Clos _ -> Printf.printf "  <Closure>\n"
+    ) state.stack;
+    Printf.printf "Environment: <env>\n";
+    Printf.printf "Code: %d instructions\n" (List.length state.code);
+    Printf.printf "Dump: %d entries\n" (List.length state.dump)
+    
+end
