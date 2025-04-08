@@ -2,6 +2,9 @@
 
 open Machine
 
+(*===================================================================================*)
+(*===================================================================================*)
+
 (* Helper function to print results *)
 let string_of_prim_ans = function
   | N(n) -> string_of_int n
@@ -120,6 +123,44 @@ let test15 = App(
 )
 let expected15 = Prim(N(11))
 
+(* Test 16: Identity function *)
+let test16 = Lam("x", V("x"))
+let expected16 = Clos(ref (KRV_Clos {expr = V("x"); table = ref (create_new_gamma ())}))
+
+(* Test 17: Application of identity function *)
+let test17 = App(Lam("x", V("x")), V("y"))
+let expected17 = Clos(ref (KRV_Clos {expr = V("y"); table = ref (create_new_gamma ())}))
+
+(* Test 18: Church encoding of true *)
+let test18 = Lam("x", Lam("y", V("x")))
+let expected18 = Clos(ref (KRV_Clos {expr = Lam("y", V("x")); table = ref (create_new_gamma ())}))
+(* Test 19: Church encoding of false *)
+let test19 = Lam("x", Lam("y", V("y")))
+let expected19 = Clos(ref (KRV_Clos {expr = Lam("y", V("y")); table = ref (create_new_gamma ())}))
+
+(* Test 20: Application of Church true to two arguments *)
+let test20 = App(App(test18, V("a")), V("b"))
+let expected20 = Clos(ref (KRV_Clos {expr = V("a"); table = ref (create_new_gamma ())}))
+
+(* Test 21: Application of Church false to two arguments *)
+let test21 = App(App(test19, V("a")), V("b"))
+let expected21 = Clos(ref (KRV_Clos {expr = V("b"); table = ref (create_new_gamma ())}))
+
+(* Test 22: Church encoding of successor function *)
+let test22 = Lam("n", Lam("f", Lam("x", App(V("f"), App(App(V("n"), V("f")), V("x"))))))
+let expected22 = Clos(ref (KRV_Clos {expr = Lam("f", Lam("x", App(V("f"), App(App(V("n"), V("f")), V("x"))))); table = ref (create_new_gamma ())}))
+
+(* Test 23: Application of successor to a Church numeral *)
+let church_one = Lam("f", Lam("x", App(V("f"), V("x"))))
+let test23 = App(test22, church_one)
+let expected23 = Clos(ref (KRV_Clos {expr = Lam("f", Lam("x", App(V("f"), App(App(church_one, V("f")), V("x"))))); table = ref (create_new_gamma ())}))
+
+let test_free_var = Lam("x", Plus(V("x"), Times(Num(2), V("y"))))
+let expected_free_var = Clos(ref (KRV_Clos {expr = Lam("x", Plus(V("x"), Times(Num(2), V("y")))); table = ref (create_new_gamma ())}))
+
+let test_lambda_plus = App(Lam("x", Plus(V("x"), Num(2))), V("y"))
+
+let expected_lambda_plus = Clos(ref (KRV_Clos {expr = Plus(V("y"), Num(2)); table = ref (create_new_gamma ())}))
 (* Run all tests *)
 let () =
   run_test "Simple numeric value" test1 expected1;
@@ -137,3 +178,18 @@ let () =
   run_test "Complex expression with multiple operations" test13 expected13;
   run_test "Higher-order function" test14 expected14;
   run_test "Mixed operations" test15 expected15;
+  run_test "Identity Function" test16 expected16;
+  run_test "Application of Identity Funcion" test17 expected17;
+  run_test "Church Encoding of True" test18 expected18;
+  run_test "Church Encoding of False" test19 expected19;
+  run_test "Application of Church true to two arguments" test20 expected20;
+  run_test "Application of Church false to two arguments" test21 expected21;
+  run_test "Church encoding of successor function" test22 expected22;
+  run_test "Application of successor to a Church numeral" test23 expected23;
+  run_test "Lambda with free variable" test_free_var expected_free_var;
+  run_test "Lambda Plus" test_lambda_plus expected_lambda_plus;
+
+
+(*===================================================================================*)
+(*===================================================================================*)
+

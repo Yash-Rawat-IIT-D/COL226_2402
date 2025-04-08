@@ -1,26 +1,43 @@
+# Makefile for Krivine and SECD Machine implementations
+
+# Compiler and flags
 OCAMLC = ocamlc
 
-# Target
-all: test
+# Targets
+all: krv_test secd_test
 
-# Bytecode compilation
-test: machine.cmo main_test.cmo
-	$(OCAMLC) $(OCAMLFLAGS) -o test machine.cmo main_test.cmo
+# Krivine Machine test
+krv_test: machine.cmo krv_test.cmo
+	$(OCAMLC) $(OCAMLFLAGS) -o krv_test machine.cmo  krv_test.cmo
 
-# Compile machine.ml
+# SECD Machine test
+secd_test: machine.cmo secd_test.cmo
+	$(OCAMLC) $(OCAMLFLAGS) -o secd_test machine.cmo secd_test.cmo
+
+# Compile machine.ml (shared definitions)
 machine.cmo: machine.ml
 	$(OCAMLC) $(OCAMLFLAGS) -c machine.ml
 
-# Compile main_test.ml
-main_test.cmo: main_test.ml machine.cmo
-	$(OCAMLC) $(OCAMLFLAGS) -c main_test.ml
+
+# Compile krv_test.ml
+krv_test.cmo: krv_test.ml machine.cmo 
+	$(OCAMLC) $(OCAMLFLAGS) -c krv_test.ml
+
+# Compile secd_test.ml
+secd_test.cmo: secd_test.ml machine.cmo
+	$(OCAMLC) $(OCAMLFLAGS) -c secd_test.ml
 
 # Run tests
-run: test
-	./test
+run_krv: krv_test
+	./krv_test
+
+run_secd: secd_test
+	./secd_test
+
+run: run_krv run_secd
 
 # Clean generated files
 clean:
-	rm -f *.cmo *.cmi test
+	rm -f *.cmo *.cmi krv_test secd_test
 
-.PHONY: all clean run
+.PHONY: all clean run run_krv run_secd

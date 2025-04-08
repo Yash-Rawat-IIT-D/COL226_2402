@@ -38,7 +38,6 @@ type lamexp =
   | LEq of lamexp * lamexp
   | IFTE of lamexp * lamexp * lamexp
 
-
 type prim_ans = N of int | B of bool
 
 type opcode =
@@ -48,7 +47,8 @@ type opcode =
   | RET
   | LDN of int 
   | LDB of bool 
-  | ADD | MUL | NOT | AND | OR 
+  | ADD |SUB | MUL 
+  | NOT | AND | OR 
   | EQ | GT | LT | GEQ | LEQ 
   | COND of opcode list * opcode list
 
@@ -74,19 +74,33 @@ and gamma = {
   mutable parent : gamma ref option
 }
 
+(* Exclusively Used for SECD Machine exectuion *)
+type secd_stack = answers list
+type secd_triple = {
+  st : secd_stack ref;
+  env : gamma ref;
+  cd : secd_code ref;
+}
+type secd_dump = secd_triple list
+type secd_state = SECD_State of secd_stack * gamma * secd_code * secd_dump
+
 exception Invalid_Gamma of machine * string 
 exception Invalid_Closure of machine * string
 exception Invalid_Answer of machine * string 
 exception Invalid_Closure_Bound of string
 exception Stack_Underflow of string
+exception Empty_Stack of string
+exception Stack_Overflow of string
 exception Var_Not_Found of string
 exception BType_Error of lamexp * lamexp * string
 exception UType_Error of lamexp * lamexp * string
-
 exception Invalid_Exp of lamexp * string
+exception Stuck of machine * string
 
 
 (*===================================================================================*)
+              (* Helper Methods to verify that correct sub-types are
+                          being used in respective machines *)
 (*===================================================================================*)
 
 let verify_closure (machine_type : machine) (clr : closure ref) : (closure ref) =
@@ -108,6 +122,9 @@ let verify_binding (machine_type : machine) (binding_pair : (variable * answers)
 (*===================================================================================*)
 (*===================================================================================*)
 
+(* Helper Functions for Gamma - Handling Variable binding to answers 
+  In a statically scoped manner - Use of Linked List of Hash-Tables *)
+
 let hash_table_size_init = 4
 
 let create_gamma (parent_ref : gamma ref option) : gamma = {
@@ -121,11 +138,6 @@ let create_new_gamma () : gamma =
 let add_binding (table : gamma ref) (var : variable) (ans : answers) =
   Hashtbl.replace !table.bindings var ans
   
-
-let create_krv_clos (exp : lamexp) (table_ref : gamma ref) : closure =
-  let krv_clr = {expr = exp; table = table_ref} in 
-  KRV_Clos krv_clr
-
 let rec lookup (table : gamma ref) (var : variable) : answers =
   match Hashtbl.find_opt !table.bindings var with
   | Some(ans) -> ans
@@ -134,13 +146,23 @@ let rec lookup (table : gamma ref) (var : variable) : answers =
       | Some(parent) -> lookup parent var
       | None -> raise (Var_Not_Found ("Variable not found: " ^ var))
     )
-  
+
 let add_child (parent : gamma ref) (child : gamma ref) =
   !(child).parent <- Some(parent) (* C Style Mutation of references *)
 
+(* Method to create and a closure for krivine machine *)
+let create_krv_clos (exp : lamexp) (table_ref : gamma ref) : closure =
+  let krv_clr = {expr = exp; table = table_ref} in 
+  KRV_Clos krv_clr
+
+
+(*===================================================================================*)
+(*===================================================================================*)
+                              (* Krivine Machine *)
 (*===================================================================================*)
 (*===================================================================================*)
 
+(* Helper Methods for Kirvine Machine *)
 let plus_helper (cl1 : closure) (cl2 : closure) : closure = 
   match cl1, cl2 with 
     | KRV_Clos krv1, KRV_Clos krv2 -> (
@@ -232,8 +254,37 @@ let leq_helper (cl1 : closure) (cl2 : closure) : closure =
     )
   | _ -> raise(Invalid_Closure(KRV_M,"Implemented LEq_helper for Kirvine Machine as of now"))  
 
+let rec unload (cl : closure) : lamexp =
+  match cl with
+  | KRV_Clos krv_cl -> (
+      match krv_cl.expr with
+      | Lam(x, e) -> 
+          Lam(x, unload_expr e krv_cl.table)
+      | _ -> unload_expr krv_cl.expr krv_cl.table
+    )
+  | _ -> failwith "Unloading Implemented for KRV_Closure Only !"
+
+and unload_expr (expr : lamexp) (env : gamma ref) : lamexp =
+  match expr with
+  | V(var) -> (
+      try
+        match lookup env var with
+        | Clos(cl) -> unload !cl
+        | _ -> V(var)                 (* Keep primitive values as variables - Might change this later *)
+      with Var_Not_Found _ -> V(var)  (* Free variables remain unchanged *)
+    )
+  | App(e1, e2) -> 
+      App(unload_expr e1 env, unload_expr e2 env)
+  | Lam(x, e) ->
+      (* Handle variable capture by creating a fresh environment *)
+      let new_env = ref (create_gamma (Some env)) in
+      Lam(x, unload_expr e new_env)
+  | e -> e  (* Other expressions remain unchanged *)
+
 (*===================================================================================*)
 (*===================================================================================*)
+
+(* Kirivine Machine Execution Semantics implemented as OCaml Method *)
 
 let rec krv_machine (cl : closure) (stack : closure list) : closure = 
   let rec tail_helper_krv (cl : closure) (stack : closure list) : closure =
@@ -246,11 +297,15 @@ let rec krv_machine (cl : closure) (stack : closure list) : closure =
             )
 
           | V (var) -> (
+            try
               match lookup krv_cl.table var with 
-              | Clos(clr) ->  (
-                tail_helper_krv !clr stack
-              )
-              | _ -> raise(Invalid_Closure_Bound(var ^ " : This variable is bound to a non-closure type answer in Kirvine Machine Exeution"))
+              | Clos(clr) -> tail_helper_krv !clr stack
+              | _ -> raise(Invalid_Closure_Bound(var ^ " : This variable is bound to a non-closure type answer in Kirvine Machine Execution"))
+            with Var_Not_Found _ -> 
+              (* Free variable - can only be a valid result if stack is empty *)
+              match stack with
+              | [] -> cl  (* Return as is when stack is empty *)
+              | _ -> raise(Invalid_Exp(V(var), "Cannot apply a free variable to arguments"))
             )
 
           | App(e1, e2) ->(
@@ -261,9 +316,10 @@ let rec krv_machine (cl : closure) (stack : closure list) : closure =
 
           | Lam(x, e') -> (
               match stack with
-              | [] ->
-                  (* No arguments left on the stack; return the current closure *)
-                  cl
+              | [] ->(
+                   let opened_expr = unload cl in
+                    create_krv_clos opened_expr (ref (create_new_gamma ()))
+                )
               | arg_cl :: rest_stack ->
                   (* Extend the environment with the argument binding *)
                   let new_gamma = create_gamma (Some krv_cl.table) in
@@ -355,3 +411,276 @@ let rec krv_machine (cl : closure) (stack : closure list) : closure =
       | _ -> raise(Invalid_Closure(KRV_M,"Invalid closure encountered in Kirvine Machine"))
   in
   tail_helper_krv cl stack 
+
+
+(*===================================================================================*)
+(*===================================================================================*)
+                    (* SECD Machine - Call by Value Semantics *)
+(*===================================================================================*)
+(*===================================================================================*)
+
+
+(* Helper Method for SECD_Stack *)
+
+let create_secd_stack() : secd_stack = [] 
+
+let push_secd_st (stack : secd_stack) (value : answers) : secd_stack =
+  let _ = verify_answer SECD_M (ref value) in
+  value :: stack 
+
+let pop_secd_st (stack : secd_stack) : answers * secd_stack = 
+  match stack with 
+  | [] -> raise (Stack_Underflow("Popping from an Empty SECD Stack"))
+  | top :: rest -> let _ = verify_answer SECD_M (ref top) in (top ,rest)
+
+let peek_secd_st (stack : secd_stack) : answers = 
+  match stack with 
+    | [] -> raise (Empty_Stack("Peeking in Empty SECD_Stack"))
+    | top :: _ -> top
+
+let is_empty_st (stack : secd_stack) : bool = 
+  match stack with
+    | [] -> true
+    | _ -> false
+
+(* Helper method to create a closure for SECD Machine *)
+
+let create_secd_clos (var : variable) (code_ref : secd_code ref) (table_ref : gamma ref) : closure = 
+  let sec_clos = {  param = var; code = code_ref; table = table_ref;} in
+  SECD_Clos sec_clos
+
+(* Helper Method for SECD_Code *)
+
+let rec compile (expr : lamexp) : secd_code = 
+  match expr with
+    (* Dealing With Compilation of Lambda Calculi Expressions *)
+    | V (var)           ->  [LOOKUP(var)]
+    | App (e1,e2)       -> compile e1 @ compile e2 @ [APP]
+    | Lam (param,body)  -> [MkCLOS(param, compile body @ [RET])]
+    (* Dealing with Op-Codes for older terms !*)
+    | Num n             -> [LDN n]
+    | Bool b            -> [LDB b]
+    | Plus(e1,e2)       -> compile e1 @ compile e2 @ [ADD]
+    | Sub(e1,e2)        ->  compile e1 @ compile e2 @ [SUB]
+    | Times(e1,e2)      -> compile e1 @ compile e2 @ [MUL]
+    | Not(e)            -> compile e @ [NOT]
+    | And(e1, e2)       -> compile e1 @ compile e2 @ [AND]  
+    | Or(e1, e2)        -> compile e1 @ compile e2 @ [OR]  
+    | Eq(e1, e2)        -> compile e1 @ compile e2 @ [EQ]  
+    | Gt(e1, e2)        -> compile e1 @ compile e2 @ [GT]  
+    | Lt(e1,e2)         -> compile e1 @ compile e2 @ [LT]
+    | LEq(e1,e2)        -> compile e1 @ compile e2 @ [LEQ]
+    | GEq(e1,e2)        -> compile e1 @ compile e2 @ [GEQ]
+    | IFTE(e1,e2,e3)    -> compile e1 @ [COND(compile e2, compile e3)]
+
+
+
+(* Helper Methods for SECD_Dump *)
+
+let create_triple (stack_ref : secd_stack ref) (env_ref : gamma ref) (code_ref : secd_code ref) : secd_triple = 
+  { st = stack_ref; env = env_ref; cd = code_ref }
+
+let push_secd_dmp (dump : secd_dump) (triple : secd_triple) : secd_dump =
+  triple :: dump
+
+let pop_secd_dmp (dump : secd_dump) : secd_triple * secd_triple list = 
+  match dump with
+    | [] -> raise (Empty_Stack("Popping from an Empty Dump in SECD Machine"))
+    | top :: rest -> (top, rest)
+
+let peek_secd_dmp (dump : secd_dump) : secd_triple = 
+  match dump with
+  | [] -> raise (Empty_Stack("Peeking into an Empty Dump in SECD Machine"))
+  | top :: _ -> top
+
+let is_empty_dmp (dump : secd_dump) : bool = 
+  match dump with
+    | [] -> true
+    | _ -> false
+
+let secd_machine (s : secd_stack) (e : gamma) (c : secd_code) (d : secd_dump) : answers = 
+  let init_state = SECD_State(s,e,c,d) in
+  let rec tail_secd_helper (state : secd_state) : secd_state =
+    let SECD_State(s,e,c,d) = state in
+    match c with  
+      | [] -> state      (* Exhausted the opcodes *)
+      | op :: rest_code -> (
+          match op with 
+            | LDN n -> (  
+                let ans = Prim(N(n)) in 
+                let _ = verify_answer SECD_M (ref ans) in 
+                tail_secd_helper (SECD_State((push_secd_st s ans),e,rest_code,d))  
+              )
+
+            | LDB b -> (
+                let ans = Prim(B(b)) in 
+                let _ = verify_answer SECD_M (ref ans) in
+                tail_secd_helper (SECD_State((push_secd_st s ans),e,rest_code,d))
+              )
+
+            | LOOKUP var -> (
+                try
+                  let ans = lookup (ref e) var in
+                  let _ = verify_answer SECD_M (ref ans) in 
+                  tail_secd_helper (SECD_State((push_secd_st s ans),e,rest_code,d))
+                with Var_Not_Found _ ->
+                  raise (Var_Not_Found ("Unbound variable in call-by-value context of SECD Machine : " ^ var))  
+              )
+
+            | MkCLOS(param,body_code) -> (
+                let clos_ans = create_secd_clos param (ref body_code) (ref e) in
+                let ans = Clos(ref clos_ans) in
+                tail_secd_helper (SECD_State((push_secd_st s ans),e,rest_code,d))
+              )
+
+            | APP -> (
+                match s with 
+                | arg :: Clos(clos) :: rest_stack -> (
+                    let _ = verify_closure SECD_M clos in
+                    match !clos with 
+                      | SECD_Clos sec_clos -> ( 
+                          let aug_table = create_gamma (Some(sec_clos.table)) in
+                          add_binding (ref aug_table) (sec_clos.param) arg;
+                          let old_context = create_triple (ref rest_stack) (ref e) (ref rest_code) in
+                          tail_secd_helper(SECD_State((create_secd_stack()),aug_table,!(sec_clos.code),push_secd_dmp d old_context))
+
+                        )
+                      | _ -> raise(Invalid_Closure(SECD_M, "Invalid Closure type encountered during SECD_Machine Execution"))
+                  )
+                | _ -> raise(Stuck(SECD_M,"Invalid stack for APP opcode : stack should have form : a::⟨⟨⟨x,c′,γ'⟩⟩⟩::S,
+                                \n Where a represents argument bound to parameter x"))
+              )
+
+            | RET -> (
+                match s, d with
+                | [result], ret_context :: rest_dump -> (
+                  let new_s = result :: !(ret_context.st) in
+                  let new_e = ret_context.env in
+                  let new_c = !(ret_context.cd) in
+                  tail_secd_helper(SECD_State(new_s,!new_e,new_c,rest_dump))
+                  )
+                | _, [] -> raise (Stuck (SECD_M,"RET with empty dump : No Context found to return to after abstraction call"))
+                | _, _ -> raise (Stuck (SECD_M,"Invalid stack for RET opcode : Function Call's should end with only one answer
+                                        on current context's stack"))
+              )
+
+            | ADD -> (
+                match s with 
+                  | Prim(N(n1)) :: Prim((N (n2))) :: rest_stack -> (
+                      let ans = Prim((N (n1+n2))) in
+                      tail_secd_helper(SECD_State(push_secd_st rest_stack ans,e,rest_code,d))
+                    )
+                  | _ -> raise (Stuck (SECD_M,"Invalid stack for ADD opcode : Expected atleast two arguments on stack to be of primitive 
+                  \n value type with integer associated values"))
+              )
+
+            | SUB -> (
+              match s with 
+                | Prim(N(n1)) :: Prim((N(n2))) :: rest_stack -> (
+                    let ans = Prim((N(n2-n1))) in (* Cheeky - Left is evaluated first so it would be pushed first*)
+                    tail_secd_helper(SECD_State((push_secd_st rest_stack ans),e,rest_code,d))
+                  )
+                | _ -> raise (Stuck (SECD_M,"Invalid stack for SUB opcode: Expected at least two integers on stack"))
+              )
+                
+            | MUL -> (
+                match s with 
+                  | Prim(N(n1)) :: Prim((N(n2))) :: rest_stack -> (
+                      let ans = Prim((N(n1*n2))) in
+                      tail_secd_helper(SECD_State((push_secd_st rest_stack ans),e,rest_code,d))
+                    )
+                  | _ -> raise (Stuck (SECD_M,"Invalid stack for MUL opcode: Expected at least two integers on stack"))
+              )
+                
+            | NOT -> (
+                match s with 
+                  | Prim(B(b)) :: rest_stack -> (
+                      let ans = Prim((B(not b))) in
+                      tail_secd_helper(SECD_State((push_secd_st rest_stack ans),e,rest_code,d))
+                    )
+                  | _ -> raise (Stuck (SECD_M,"Invalid stack for NOT opcode: Expected a boolean on stack"))
+              )
+            
+            | AND -> (
+                match s with 
+                  | Prim(B(b1)) :: Prim((B(b2))) :: rest_stack -> (
+                      let ans = Prim((B(b1 && b2))) in
+                      tail_secd_helper(SECD_State((push_secd_st rest_stack ans),e,rest_code,d))
+                    )
+                  | _ -> raise (Stuck (SECD_M,"Invalid stack for AND opcode: Expected at least two booleans on stack"))
+              )
+            
+            | OR -> (
+                match s with 
+                  | Prim(B(b1)) :: Prim((B(b2))) :: rest_stack -> (
+                      let ans = Prim((B(b1 || b2))) in
+                      tail_secd_helper(SECD_State((push_secd_st rest_stack ans),e,rest_code,d))
+                    )
+                  | _ -> raise (Stuck (SECD_M,"Invalid stack for OR opcode: Expected at least two booleans on stack"))
+              )
+            
+            | EQ -> (
+                match s with 
+                  | Prim(N(n1)) :: Prim((N(n2))) :: rest_stack -> (
+                      let ans = Prim((B(n1 = n2))) in
+                      tail_secd_helper(SECD_State((push_secd_st rest_stack ans),e,rest_code,d))
+                    )
+                  | Prim(B(b1)) :: Prim((B(b2))) :: rest_stack -> (
+                      let ans = Prim((B(b1 = b2))) in
+                      tail_secd_helper(SECD_State((push_secd_st rest_stack ans),e,rest_code,d))
+                    )
+                  | _ -> raise (Stuck (SECD_M,"Invalid stack for EQ opcode: Expected two comparable values on stack"))
+              )
+            
+            | GT -> (
+                match s with 
+                  | Prim(N(n1)) :: Prim((N(n2))) :: rest_stack -> (
+                      let ans = Prim((B(n2 > n1))) in
+                      tail_secd_helper(SECD_State((push_secd_st rest_stack ans),e,rest_code,d))
+                    )
+                  | _ -> raise (Stuck (SECD_M,"Invalid stack for GT opcode: Expected two integers on stack"))
+              )
+            
+            | LT -> (
+                match s with 
+                  | Prim(N(n1)) :: Prim((N(n2))) :: rest_stack -> (
+                      let ans = Prim((B(n2 < n1))) in
+                      tail_secd_helper(SECD_State((push_secd_st rest_stack ans),e,rest_code,d))
+                    )
+                  | _ -> raise (Stuck (SECD_M,"Invalid stack for LT opcode: Expected two integers on stack"))
+              )
+            
+            | GEQ -> (
+                match s with 
+                  | Prim(N(n1)) :: Prim((N(n2))) :: rest_stack -> (
+                      let ans = Prim((B(n2 >= n1))) in
+                      tail_secd_helper(SECD_State((push_secd_st rest_stack ans),e,rest_code,d))
+                    )
+                  | _ -> raise (Stuck (SECD_M,"Invalid stack for GEQ opcode: Expected two integers on stack"))
+              )
+            
+            | LEQ -> (
+                match s with 
+                  | Prim(N(n1)) :: Prim((N(n2))) :: rest_stack -> (
+                      let ans = Prim((B(n2 <= n1))) in
+                      tail_secd_helper(SECD_State((push_secd_st rest_stack ans),e,rest_code,d))
+                    )
+                  | _ -> raise (Stuck (SECD_M,"Invalid stack for LEQ opcode: Expected two integers on stack"))
+              )
+            
+            | COND(then_code, else_code) -> (
+                match s with
+                  | Prim(B(b)) :: rest_stack -> (
+                      let branch_code = if b then then_code else else_code in
+                      tail_secd_helper(SECD_State(rest_stack, e, branch_code @ rest_code, d))
+                    )
+                  | _ -> raise (Stuck (SECD_M,"Invalid stack for COND opcode: Expected a boolean on stack"))
+              )
+        )
+  in  
+  let final_state  = tail_secd_helper init_state in
+  let SECD_State(final_ans_stack,_,_,_) = final_state in
+  match final_ans_stack with 
+    | [] -> raise(Empty_Stack("Final Answer Stack in SECD Machine is empty !"))
+    | final_ans::[] -> final_ans
+    | foo :: others -> raise(Stack_Overflow("Final Answer Stack in SECD Machine contains more than 1 elements !"))
