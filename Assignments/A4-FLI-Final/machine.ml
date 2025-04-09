@@ -393,88 +393,88 @@ let rec krv_machine (cl : closure) (stack : closure list) : closure =
           | true  -> KRV_Clos(unload_routine cl krv_cl.table)
         )
 
-        | Sub(e1, e2) -> (
-          let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
-          let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
-          let res_cl = sub_helper res_e1 res_e2 krv_cl.table true in
-          match res_cl.expr = krv_cl.expr with 
-          | false -> tail_helper_krv (KRV_Clos(sub_helper res_e1 res_e2 krv_cl.table true)) stack
-          | true  -> KRV_Clos(unload_routine cl krv_cl.table)
-        )
-        
-        | Times(e1, e2) -> (
-          let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
-          let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
-          let res_cl = times_helper res_e1 res_e2 krv_cl.table true in
-          match res_cl.expr = krv_cl.expr with 
-          | false -> tail_helper_krv (KRV_Clos(times_helper res_e1 res_e2 krv_cl.table true)) stack
-          | true  -> KRV_Clos(unload_routine cl krv_cl.table)
-        )
-        
-        | And(e1, e2) -> (
-          let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
-          let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
-          let res_cl = and_helper res_e1 res_e2 krv_cl.table true in
-          match res_cl.expr = krv_cl.expr with 
-          | false -> tail_helper_krv (KRV_Clos(and_helper res_e1 res_e2 krv_cl.table true)) stack
-          | true  -> KRV_Clos(unload_routine cl krv_cl.table)
-        )
-        
-        | Or(e1, e2) -> (
-          let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
-          let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
-          let res_cl = or_helper res_e1 res_e2 krv_cl.table true in
-          match res_cl.expr = krv_cl.expr with 
-          | false -> tail_helper_krv (KRV_Clos(or_helper res_e1 res_e2 krv_cl.table true)) stack
-          | true  -> KRV_Clos(unload_routine cl krv_cl.table)
-        )
+      | Sub(e1, e2) -> (
+        let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
+        let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
+        let res_cl = sub_helper res_e1 res_e2 krv_cl.table true in
+        match res_cl.expr = krv_cl.expr with 
+        | false -> tail_helper_krv (KRV_Clos(sub_helper res_e1 res_e2 krv_cl.table true)) stack
+        | true  -> KRV_Clos(unload_routine cl krv_cl.table)
+      )
+      
+      | Times(e1, e2) -> (
+        let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
+        let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
+        let res_cl = times_helper res_e1 res_e2 krv_cl.table true in
+        match res_cl.expr = krv_cl.expr with 
+        | false -> tail_helper_krv (KRV_Clos(times_helper res_e1 res_e2 krv_cl.table true)) stack
+        | true  -> KRV_Clos(unload_routine cl krv_cl.table)
+      )
+      
+      | And(e1, e2) -> (
+        let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
+        let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
+        let res_cl = and_helper res_e1 res_e2 krv_cl.table true in
+        match res_cl.expr = krv_cl.expr with 
+        | false -> tail_helper_krv (KRV_Clos(and_helper res_e1 res_e2 krv_cl.table true)) stack
+        | true  -> KRV_Clos(unload_routine cl krv_cl.table)
+      )
+      
+      | Or(e1, e2) -> (
+        let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
+        let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
+        let res_cl = or_helper res_e1 res_e2 krv_cl.table true in
+        match res_cl.expr = krv_cl.expr with 
+        | false -> tail_helper_krv (KRV_Clos(or_helper res_e1 res_e2 krv_cl.table true)) stack
+        | true  -> KRV_Clos(unload_routine cl krv_cl.table)
+      )
 
-        | Eq(e1, e2) -> (
-          let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
-          let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
-          let res_cl = eq_helper res_e1 res_e2 krv_cl.table true in
-          match res_cl.expr = krv_cl.expr with 
-          | false -> tail_helper_krv (KRV_Clos(eq_helper res_e1 res_e2 krv_cl.table true)) stack
-          | true  -> KRV_Clos(unload_routine cl krv_cl.table)
-        )
+      | Eq(e1, e2) -> (
+        let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
+        let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
+        let res_cl = eq_helper res_e1 res_e2 krv_cl.table true in
+        match res_cl.expr = krv_cl.expr with 
+        | false -> tail_helper_krv (KRV_Clos(eq_helper res_e1 res_e2 krv_cl.table true)) stack
+        | true  -> KRV_Clos(unload_routine cl krv_cl.table)
+      )
 
-        | Gt(e1, e2) -> (
-          let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
-          let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
-          let res_cl = gt_helper res_e1 res_e2 krv_cl.table true in
-          match res_cl.expr = krv_cl.expr with 
-          | false -> tail_helper_krv (KRV_Clos(gt_helper res_e1 res_e2 krv_cl.table true)) stack
-          | true  -> KRV_Clos(unload_routine cl krv_cl.table)
-        )
+      | Gt(e1, e2) -> (
+        let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
+        let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
+        let res_cl = gt_helper res_e1 res_e2 krv_cl.table true in
+        match res_cl.expr = krv_cl.expr with 
+        | false -> tail_helper_krv (KRV_Clos(gt_helper res_e1 res_e2 krv_cl.table true)) stack
+        | true  -> KRV_Clos(unload_routine cl krv_cl.table)
+      )
 
-        | Lt(e1, e2) -> (
-          let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
-          let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
-          let res_cl = lt_helper res_e1 res_e2 krv_cl.table true in
-          match res_cl.expr = krv_cl.expr with 
-          | false -> tail_helper_krv (KRV_Clos(lt_helper res_e1 res_e2 krv_cl.table true)) stack
-          | true  -> KRV_Clos(unload_routine cl krv_cl.table)
-        )
+      | Lt(e1, e2) -> (
+        let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
+        let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
+        let res_cl = lt_helper res_e1 res_e2 krv_cl.table true in
+        match res_cl.expr = krv_cl.expr with 
+        | false -> tail_helper_krv (KRV_Clos(lt_helper res_e1 res_e2 krv_cl.table true)) stack
+        | true  -> KRV_Clos(unload_routine cl krv_cl.table)
+      )
 
-        | GEq(e1, e2) -> (
-          let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
-          let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
-          let res_cl = geq_helper res_e1 res_e2 krv_cl.table true in
-          match res_cl.expr = krv_cl.expr with 
-          | false -> tail_helper_krv (KRV_Clos(geq_helper res_e1 res_e2 krv_cl.table true)) stack
-          | true  -> KRV_Clos(unload_routine cl krv_cl.table)
-        )
+      | GEq(e1, e2) -> (
+        let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
+        let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
+        let res_cl = geq_helper res_e1 res_e2 krv_cl.table true in
+        match res_cl.expr = krv_cl.expr with 
+        | false -> tail_helper_krv (KRV_Clos(geq_helper res_e1 res_e2 krv_cl.table true)) stack
+        | true  -> KRV_Clos(unload_routine cl krv_cl.table)
+      )
 
-        | LEq(e1, e2) -> (
-          let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
-          let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
-          let res_cl = leq_helper res_e1 res_e2 krv_cl.table true in
-          match res_cl.expr = krv_cl.expr with 
-          | false -> tail_helper_krv (KRV_Clos(leq_helper res_e1 res_e2 krv_cl.table true)) stack
-          | true  -> KRV_Clos(unload_routine cl krv_cl.table)
-        )   
+      | LEq(e1, e2) -> (
+        let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
+        let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
+        let res_cl = leq_helper res_e1 res_e2 krv_cl.table true in
+        match res_cl.expr = krv_cl.expr with 
+        | false -> tail_helper_krv (KRV_Clos(leq_helper res_e1 res_e2 krv_cl.table true)) stack
+        | true  -> KRV_Clos(unload_routine cl krv_cl.table)
+      )   
 
-        | IFTE(cond_exp, true_exp, false_exp) -> (
+      | IFTE(cond_exp, true_exp, false_exp) -> (
           let cond_res = krv_machine (KRV_Clos(create_krv_clos cond_exp krv_cl.table)) [] in
           let take_true = ( match cond_res with 
                             | KRV_Clos (krv_cond) -> (

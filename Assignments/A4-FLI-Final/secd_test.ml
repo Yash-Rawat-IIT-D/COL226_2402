@@ -235,6 +235,80 @@ let test31 = App(
 )
 let expected31 = Prim(N(25))  (* (λx.(λy.x*x + y*y) (x+1)) 3 = (λy.3*3 + y*y) (3+1) = (λy.9 + y*y) 4 = 9 + 4*4 = 9 + 16 = 25 *)
 
+let test_parent_lookup1 = 
+  App(
+    Lam("x", 
+      Lam("y", Plus(V("x"), V("y")))
+    ),
+    Num(5)
+  )
+
+
+let env_x_to_5 = (
+  let new_env = create_new_gamma() in 
+  let _ = add_binding (ref new_env) ("x") (Prim(N(5))) in 
+  new_env 
+)
+
+  
+let test_parent_lookup2 = 
+  App(
+    App(
+      Lam("x", 
+        Lam("y", 
+          Lam("z", Plus(Plus(V("x"), V("y")), V("z")))
+        )
+      ),
+      Num(10)
+    ),
+    Num(20)
+  )
+
+let env_xy_10_20 = (
+  let new_env = create_new_gamma() in 
+  let _ = add_binding (ref new_env) ("x") (Prim(N(10))) in
+  let _ = add_binding (ref new_env) ("y") (Prim(N(20))) in 
+  new_env
+)
+
+
+let test_parent_lookup3 = 
+  App(
+    Lam("x", 
+      App(
+        Lam("y", 
+          App(
+            Lam("x", Plus(V("x"), V("y"))),
+            Num(30)
+          )
+        ),
+        Num(20)
+      )
+    ),
+    Num(10)
+  )
+let test_parent_lookup4 = 
+  App(
+    Lam("f", 
+      App(V("f"), Num(15))
+    ),
+    Lam("y", Plus(V("y"), V("z")))
+  )
+  
+  let test_parent_lookup5 = 
+    App(
+      App(
+        Lam("x", 
+          Lam("f", 
+            App(V("f"), V("x"))
+          )
+        ),
+        Num(42)
+      ),
+      Lam("y", Times(V("y"), Num(2)))
+    )
+      
+
 
 (* Run all tests *)
 let () =
@@ -268,5 +342,9 @@ run_secd_test "Church encoding of false" test27 expected27;
 run_secd_test "Church numeral for 2" test28 expected28;
 run_secd_test "Church numeral addition" test29 expected29;
 run_secd_test "Complex mixed expression" test30 expected30;
-run_secd_test "Nested lambda with arithmetic" test31 expected31
- 
+run_secd_test "Nested lambda with arithmetic" test31 expected31;
+run_secd_test "Simple closure with free variable" test_parent_lookup1 (Clos(ref (SECD_Clos {param = "y"; code = ref [LOOKUP "x"; LOOKUP "y"; ADD; RET]; table = ref env_x_to_5})));
+run_secd_test "Multiple levels of nesting" test_parent_lookup2 (Clos(ref (SECD_Clos {param = "z"; code = ref [LOOKUP "x"; LOOKUP "y"; ADD; LOOKUP "z"; ADD; RET]; table = ref env_xy_10_20})));
+run_secd_test "Shadowing with inner binding" test_parent_lookup3 (Prim(N(50)));
+(* test_parent_lookup4 should raise Var_Not_Found *)
+run_secd_test "Higher-order function with environment capture" test_parent_lookup5 (Prim(N(84)));
