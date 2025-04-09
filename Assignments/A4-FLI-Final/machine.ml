@@ -119,6 +119,26 @@ let verify_binding (machine_type : machine) (binding_pair : (variable * answers)
   let _ = verify_answer machine_type (ref ans) in 
   binding_pair 
 
+let rec string_of_lamexp (e : lamexp) : string = 
+  match e with
+  | V(var) -> "V(" ^ var ^ ")"
+  | App(e1, e2) -> "App(" ^ string_of_lamexp e1 ^ ", " ^ string_of_lamexp e2 ^ ")"
+  | Lam(var, e') -> "Lam(" ^ var ^ ", " ^ string_of_lamexp e' ^ ")"
+  | Num(n) -> "Num(" ^ string_of_int n ^ ")"
+  | Bool(b) -> "Bool(" ^ string_of_bool b ^ ")"
+  | Plus(e1, e2) -> "Plus(" ^ string_of_lamexp e1 ^ ", " ^ string_of_lamexp e2 ^ ")"
+  | Sub(e1, e2) -> "Sub(" ^ string_of_lamexp e1 ^ ", " ^ string_of_lamexp e2 ^ ")"
+  | Times(e1, e2) -> "Times(" ^ string_of_lamexp e1 ^ ", " ^ string_of_lamexp e2 ^ ")"
+  | Not(e') -> "Not(" ^ string_of_lamexp e' ^ ")"
+  | And(e1, e2) -> "And(" ^ string_of_lamexp e1 ^ ", " ^ string_of_lamexp e2 ^ ")"
+  | Or(e1, e2) -> "Or(" ^ string_of_lamexp e1 ^ ", " ^ string_of_lamexp e2 ^ ")"
+  | Eq(e1, e2) -> "Eq(" ^ string_of_lamexp e1 ^ ", " ^ string_of_lamexp e2 ^ ")"
+  | Gt(e1, e2) -> "Gt(" ^ string_of_lamexp e1 ^ ", " ^ string_of_lamexp e2 ^ ")"
+  | Lt(e1, e2) -> "Lt(" ^ string_of_lamexp e1 ^ ", " ^ string_of_lamexp e2 ^ ")"
+  | GEq(e1, e2) -> "GEq(" ^ string_of_lamexp e1 ^ ", " ^ string_of_lamexp e2 ^ ")"
+  | LEq(e1, e2) -> "LEq(" ^ string_of_lamexp e1 ^ ", " ^ string_of_lamexp e2 ^ ")"
+  | IFTE(e1, e2, e3) -> "IFTE(" ^ string_of_lamexp e1 ^ ", " ^ string_of_lamexp e2 ^ ", " ^ string_of_lamexp e3 ^ ")"
+
 (*===================================================================================*)
 (*===================================================================================*)
 
@@ -151,9 +171,9 @@ let add_child (parent : gamma ref) (child : gamma ref) =
   !(child).parent <- Some(parent) (* C Style Mutation of references *)
 
 (* Method to create and a closure for krivine machine *)
-let create_krv_clos (exp : lamexp) (table_ref : gamma ref) : closure =
+let create_krv_clos (exp : lamexp) (table_ref : gamma ref) : krv_clos =
   let krv_clr = {expr = exp; table = table_ref} in 
-  KRV_Clos krv_clr
+  krv_clr
 
 
 (*===================================================================================*)
@@ -163,94 +183,104 @@ let create_krv_clos (exp : lamexp) (table_ref : gamma ref) : closure =
 (*===================================================================================*)
 
 (* Helper Methods for Kirvine Machine *)
-let plus_helper (cl1 : closure) (cl2 : closure) : closure = 
+let plus_helper (cl1 : closure) (cl2 : closure) (gamma_ref : gamma ref) (over_ride : bool) : krv_clos = 
   match cl1, cl2 with 
     | KRV_Clos krv1, KRV_Clos krv2 -> (
       match krv1.expr, krv2.expr with
-        | Num(n1), Num(n2) -> create_krv_clos (Num (n1+n2)) (ref (create_new_gamma ())) 
-        | _,_ -> raise (BType_Error(krv1.expr, krv2.expr, "Invalid Expression for addition")) 
+        | Num(n1), Num(n2) -> create_krv_clos (Num (n1+n2)) (gamma_ref) 
+        | _,_ -> if over_ride then create_krv_clos (Plus(krv1.expr,krv2.expr)) (gamma_ref)
+                 else raise (BType_Error(krv1.expr, krv2.expr, "Invalid Expression for addition")) 
     )
     | _ -> raise(Invalid_Closure(KRV_M,"Implemented Plus_helper for Kirvine Machine as of now"))
 
-let sub_helper (cl1 : closure) (cl2 : closure) : closure =
+ let sub_helper (cl1 : closure) (cl2 : closure) (gamma_ref : gamma ref) (over_ride : bool) : krv_clos =
   match cl1, cl2 with
   | KRV_Clos krv1, KRV_Clos krv2 -> (
       match krv1.expr, krv2.expr with
-      | Num(n1), Num(n2) -> create_krv_clos (Num (n1 - n2)) (ref (create_new_gamma ()))
-      | _, _ -> raise (BType_Error(krv1.expr, krv2.expr, "Invalid Expression for subtraction"))
+      | Num(n1), Num(n2) -> create_krv_clos (Num (n1 - n2)) (gamma_ref)
+      | _, _ ->if over_ride then create_krv_clos (Sub(krv1.expr,krv2.expr)) (gamma_ref) 
+               else raise (BType_Error(krv1.expr, krv2.expr, "Invalid Expression for subtraction"))
     )
   | _ -> raise(Invalid_Closure(KRV_M,"Implemented Sub_helper for Kirvine Machine as of now"))
 
-let times_helper (cl1 : closure) (cl2 : closure) : closure =
+let times_helper (cl1 : closure) (cl2 : closure) (gamma_ref : gamma ref) (over_ride : bool) : krv_clos =
   match cl1, cl2 with
   | KRV_Clos krv1, KRV_Clos krv2 -> (
       match krv1.expr, krv2.expr with
-      | Num(n1), Num(n2) -> create_krv_clos (Num (n1 * n2)) (ref (create_new_gamma ()))
-      | _, _ -> raise (BType_Error(krv1.expr, krv2.expr, "Invalid Expression for multiplication"))
+      | Num(n1), Num(n2) -> create_krv_clos (Num (n1 * n2)) (gamma_ref)
+      | _, _ -> if over_ride then create_krv_clos (Times(krv1.expr,krv2.expr)) (gamma_ref)
+                else raise (BType_Error(krv1.expr, krv2.expr, "Invalid Expression for multiplication"))
     )
   | _ -> raise(Invalid_Closure(KRV_M,"Implemented Times_helper for Kirvine Machine as of now"))
 
-let and_helper (cl1 : closure) (cl2 : closure) : closure =
+let and_helper (cl1 : closure) (cl2 : closure) (gamma_ref : gamma ref) (over_ride : bool) : krv_clos =
   match cl1, cl2 with
   | KRV_Clos krv1, KRV_Clos krv2 -> (
       match krv1.expr, krv2.expr with
-      | Bool(b1), Bool(b2) -> create_krv_clos (Bool(b1 && b2)) (ref (create_new_gamma ()))
-      | _, _ -> raise (BType_Error(krv1.expr, krv2.expr, "Invalid Expression for logical AND"))
+      | Bool(b1), Bool(b2) -> create_krv_clos (Bool(b1 && b2)) (gamma_ref)
+      | _, _ -> if over_ride then create_krv_clos (And(krv1.expr,krv2.expr)) (gamma_ref)
+                else raise (BType_Error(krv1.expr, krv2.expr, "Invalid Expression for logical AND"))
     )
   | _ -> raise(Invalid_Closure(KRV_M,"Implemented And_helper for Kirvine Machine as of now"))
 
-let or_helper (cl1 : closure) (cl2 : closure) : closure =
+let or_helper (cl1 : closure) (cl2 : closure) (gamma_ref : gamma ref) (over_ride : bool) : krv_clos =
   match cl1, cl2 with
   | KRV_Clos krv1, KRV_Clos krv2 -> (
       match krv1.expr, krv2.expr with
-      | Bool(b1), Bool(b2) -> create_krv_clos (Bool(b1 || b2)) (ref (create_new_gamma()))
-      | _, _ -> raise(BType_Error(krv1.expr, krv2.expr,"Invalid Expression for logical OR"))
+      | Bool(b1), Bool(b2) -> create_krv_clos (Bool(b1 || b2)) (gamma_ref)
+      | _, _ -> if over_ride then create_krv_clos (Or(krv1.expr,krv2.expr)) (gamma_ref)
+                else raise(BType_Error(krv1.expr, krv2.expr,"Invalid Expression for logical OR"))
     )
   | _ -> raise(Invalid_Closure(KRV_M,"Implemented Or_helper for Kirvine Machine as of now"))
 
-let eq_helper (cl1 : closure) (cl2 : closure) : closure =
+let eq_helper (cl1 : closure) (cl2 : closure) (gamma_ref : gamma ref) (over_ride : bool) : krv_clos =
   match cl1, cl2 with
   | KRV_Clos krv1, KRV_Clos krv2 -> (
       match krv1.expr, krv2.expr with
-      | Num(n1), Num(n2) -> create_krv_clos (Bool(n1 = n2)) (ref (create_new_gamma ()))
-      | Bool(b1), Bool(b2) -> create_krv_clos (Bool(b1 = b2)) (ref (create_new_gamma ()))
-      | _, _ -> raise (BType_Error(krv1.expr, krv2.expr, "Invalid Expression for equality comparison"))
+      | Num(n1), Num(n2) -> create_krv_clos (Bool(n1 = n2)) (gamma_ref)
+      | Bool(b1), Bool(b2) -> create_krv_clos (Bool(b1 = b2)) (gamma_ref)
+      | _, _ -> if over_ride then create_krv_clos (Eq(krv1.expr,krv2.expr)) (gamma_ref) 
+                else raise (BType_Error(krv1.expr, krv2.expr, "Invalid Expression for equality comparison"))
     )
   | _ -> raise(Invalid_Closure(KRV_M,"Implemented Eq_helper for Kirvine Machine as of now"))
 
-let gt_helper (cl1 : closure) (cl2 : closure) : closure =
+let gt_helper (cl1 : closure) (cl2 : closure) (gamma_ref : gamma ref) (over_ride : bool) : krv_clos =
   match cl1, cl2 with
   | KRV_Clos krv1, KRV_Clos krv2 -> (
       match krv1.expr, krv2.expr with
-      | Num(n1), Num(n2) -> create_krv_clos (Bool(n1 > n2)) (ref (create_new_gamma ()))
-      | _, _ -> raise (BType_Error(krv1.expr, krv2.expr, "Invalid Expression for greater than comparison"))
+      | Num(n1), Num(n2) -> create_krv_clos (Bool(n1 > n2)) (gamma_ref)
+      | _, _ -> if over_ride then create_krv_clos (Gt(krv1.expr,krv2.expr)) (gamma_ref)
+                else raise (BType_Error(krv1.expr, krv2.expr, "Invalid Expression for greater than comparison"))
     )
   | _ -> raise(Invalid_Closure(KRV_M,"Implemented Gt_helper for Kirvine Machine as of now"))
 
-let lt_helper (cl1 : closure) (cl2 : closure) : closure =
+let lt_helper (cl1 : closure) (cl2 : closure) (gamma_ref : gamma ref) (over_ride : bool) : krv_clos =
   match cl1, cl2 with
   | KRV_Clos krv1, KRV_Clos krv2 -> (
       match krv1.expr, krv2.expr with
-      | Num(n1), Num(n2) -> create_krv_clos (Bool(n1 < n2)) (ref (create_new_gamma ()))
-      | _, _ -> raise (BType_Error(krv1.expr, krv2.expr, "Invalid Expression for less than comparison"))
+      | Num(n1), Num(n2) -> create_krv_clos (Bool(n1 < n2)) (gamma_ref)
+      | _, _ -> if over_ride then create_krv_clos (Lt(krv1.expr,krv2.expr)) (gamma_ref)
+                else raise (BType_Error(krv1.expr, krv2.expr, "Invalid Expression for less than comparison"))
     )
   | _ -> raise(Invalid_Closure(KRV_M,"Implemented Lt_helper for Kirvine Machine as of now"))
   
-let geq_helper (cl1 : closure) (cl2 : closure) : closure =
+let geq_helper (cl1 : closure) (cl2 : closure) (gamma_ref : gamma ref) (over_ride : bool) : krv_clos =
   match cl1, cl2 with
   | KRV_Clos krv1, KRV_Clos krv2 -> (
       match krv1.expr, krv2.expr with
-      | Num(n1), Num(n2) -> create_krv_clos (Bool(n1 >= n2)) (ref (create_new_gamma ()))
-      | _, _ -> raise (BType_Error(krv1.expr, krv2.expr, "Invalid Expression for greater than or equal comparison"))
+      | Num(n1), Num(n2) -> create_krv_clos (Bool(n1 >= n2)) (gamma_ref)
+      | _, _ -> if over_ride then create_krv_clos (GEq(krv1.expr,krv2.expr)) (gamma_ref)
+                else raise (BType_Error(krv1.expr, krv2.expr, "Invalid Expression for greater than or equal comparison"))
     )
   | _ -> raise(Invalid_Closure(KRV_M,"Implemented GEq_helper for Kirvine Machine as of now"))
   
-let leq_helper (cl1 : closure) (cl2 : closure) : closure =
+let leq_helper (cl1 : closure) (cl2 : closure) (gamma_ref : gamma ref) (over_ride : bool) : krv_clos =
   match cl1, cl2 with
   | KRV_Clos krv1, KRV_Clos krv2 -> (
       match krv1.expr, krv2.expr with
-      | Num(n1), Num(n2) -> create_krv_clos (Bool(n1 <= n2)) (ref (create_new_gamma ()))
-      | _, _ -> raise (BType_Error(krv1.expr, krv2.expr, "Invalid Expression for less than or equal comparison"))
+      | Num(n1), Num(n2) -> create_krv_clos (Bool(n1 <= n2)) (gamma_ref)
+      | _, _ -> if over_ride then create_krv_clos (LEq(krv1.expr,krv2.expr)) (gamma_ref) 
+                else raise (BType_Error(krv1.expr, krv2.expr, "Invalid Expression for less than or equal comparison"))
     )
   | _ -> raise(Invalid_Closure(KRV_M,"Implemented LEq_helper for Kirvine Machine as of now"))  
 
@@ -269,9 +299,11 @@ and unload_expr (expr : lamexp) (env : gamma ref) : lamexp =
   | V(var) -> (
       try
         match lookup env var with
-        | Clos(cl) -> unload !cl
-        | _ -> V(var)                 (* Keep primitive values as variables - Might change this later *)
-      with Var_Not_Found _ -> V(var)  (* Free variables remain unchanged *)
+        | Clos(cl) -> 
+            (* Only substitute variables that are not bound in a lambda abstraction *)
+            V(var)  (* Keep as variable reference instead of substituting *)
+        | _ -> V(var)
+      with Var_Not_Found _ -> V(var)
     )
   | App(e1, e2) -> 
       App(unload_expr e1 env, unload_expr e2 env)
@@ -281,6 +313,29 @@ and unload_expr (expr : lamexp) (env : gamma ref) : lamexp =
       Lam(x, unload_expr e new_env)
   | e -> e  (* Other expressions remain unchanged *)
 
+let rec substitute_var (expr : lamexp) (env : gamma ref) : lamexp =
+  match expr with
+  | V(var) -> (
+      try
+        match lookup env var with
+        | Clos(cl) -> unload !cl
+        | _ -> V(var)
+      with Var_Not_Found _ -> V(var)
+    )
+  | _ -> expr
+  
+
+(* Routine for Unloading the body of an expression of a closure with respect to a table and giving a closure *)
+let unload_routine (cl : closure) (table : gamma ref) : krv_clos = 
+  let opened_expr = unload cl in
+  (* Only substitute variables at the top level, not inside lambda bodies *)
+  let substituted_expr = 
+    match opened_expr with
+    | Lam(_, _) -> opened_expr  (* Preserve lambda abstractions *)
+    | _ -> substitute_var opened_expr table
+  in
+  let new_clos = create_krv_clos substituted_expr table in
+  new_clos
 (*===================================================================================*)
 (*===================================================================================*)
 
@@ -290,125 +345,151 @@ let rec krv_machine (cl : closure) (stack : closure list) : closure =
   let rec tail_helper_krv (cl : closure) (stack : closure list) : closure =
     let _ = verify_closure KRV_M (ref cl) in
     match cl with 
-      | KRV_Clos krv_cl -> (
-        match krv_cl.expr with
-          | Num(_) | Bool(_) -> (
-              cl
-            )
+    | KRV_Clos krv_cl -> (
+      match krv_cl.expr with
+      | Num(_) | Bool(_) -> (
+          cl
+        )
 
-          | V (var) -> (
-            try
-              match lookup krv_cl.table var with 
-              | Clos(clr) -> tail_helper_krv !clr stack
-              | _ -> raise(Invalid_Closure_Bound(var ^ " : This variable is bound to a non-closure type answer in Kirvine Machine Execution"))
-            with Var_Not_Found _ -> 
-              (* Free variable - can only be a valid result if stack is empty *)
-              match stack with
-              | [] -> cl  (* Return as is when stack is empty *)
-              | _ -> raise(Invalid_Exp(V(var), "Cannot apply a free variable to arguments"))
-            )
+      | V (var) -> (
+        try
+          match lookup krv_cl.table var with 
+          | Clos(clr) -> tail_helper_krv !clr stack
+          | _ -> raise(Invalid_Closure_Bound(var ^ " : This variable is bound to a non-closure type answer in Kirvine Machine Execution"))
+        with Var_Not_Found _ -> 
+          (* Free variable - can only be a valid result if stack is empty *)
+          match stack with
+          | [] -> cl  (* Return as is when stack is empty *)
+          | _ -> raise(Invalid_Exp(V(var), "Cannot apply a free variable to arguments"))
+        )
 
-          | App(e1, e2) ->(
-              let arg_closure = create_krv_clos e2 krv_cl.table in
-              let operator_closure = create_krv_clos e1 krv_cl.table in
-              tail_helper_krv operator_closure (arg_closure :: stack)
-            )
+      | App(e1, e2) ->(
+          let arg_closure = create_krv_clos e2 krv_cl.table in
+          let operator_closure = create_krv_clos e1 krv_cl.table in
+          tail_helper_krv (KRV_Clos(operator_closure)) (KRV_Clos(arg_closure) :: stack)
+        )
 
-          | Lam(x, e') -> (
-              match stack with
-              | [] ->(
-                   let opened_expr = unload cl in
-                    create_krv_clos opened_expr (ref (create_new_gamma ()))
-                )
-              | arg_cl :: rest_stack ->
-                  (* Extend the environment with the argument binding *)
-                  let new_gamma = create_gamma (Some krv_cl.table) in
-                  add_binding (ref new_gamma) x (Clos(ref arg_cl));
-                  
-                  (* Create a new closure for the body of the lambda abstraction *)
-                  let new_closure = create_krv_clos e' (ref new_gamma) in
-                  
-                  (* Continue evaluating with the new closure and updated stack *)
-                  tail_helper_krv new_closure rest_stack
-            )
-          
-          | Plus(e1,e2) -> (
-              let res_e1 = krv_machine (create_krv_clos e1 krv_cl.table) [] in 
-              let res_e2 = krv_machine (create_krv_clos e2 krv_cl.table) [] in 
-              tail_helper_krv (plus_helper res_e1 res_e2) stack
-          )
+      | Lam(x, e') -> (
+          match stack with
+          | [] ->(KRV_Clos(unload_routine cl krv_cl.table))
+          | arg_cl :: rest_stack ->
+              (* Extend the environment with the argument binding *)
+              let new_gamma = create_gamma (Some krv_cl.table) in
+              add_binding (ref new_gamma) (x) (Clos(ref arg_cl));
+              
+              (* Create a new closure for the body of the lambda abstraction *)
+              let new_closure = create_krv_clos e' (ref new_gamma) in
+              
+              (* Continue evaluating with the new closure and updated stack *)
+              tail_helper_krv (KRV_Clos(new_closure)) rest_stack
+        )
+      
+      | Plus(e1,e2) -> (
+          let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
+          let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
+          let res_cl = plus_helper res_e1 res_e2 krv_cl.table true in
+          match res_cl.expr = krv_cl.expr with 
+          | false -> tail_helper_krv (KRV_Clos(plus_helper res_e1 res_e2 krv_cl.table true)) stack
+          | true  -> KRV_Clos(unload_routine cl krv_cl.table)
+        )
 
-          | Sub(e1, e2) -> (
-              let res_e1 = krv_machine (create_krv_clos e1 krv_cl.table) [] in
-              let res_e2 = krv_machine (create_krv_clos e2 krv_cl.table) [] in
-              tail_helper_krv (sub_helper res_e1 res_e2) stack
-          )
-          
-          | Times(e1, e2) -> (
-              let res_e1 = krv_machine (create_krv_clos e1 krv_cl.table) [] in
-              let res_e2 = krv_machine (create_krv_clos e2 krv_cl.table) [] in
-              tail_helper_krv (times_helper res_e1 res_e2) stack
-            )
-          
-          | And(e1, e2) -> (
-              let res_e1 = krv_machine (create_krv_clos e1 krv_cl.table) [] in
-              let res_e2 = krv_machine (create_krv_clos e2 krv_cl.table) [] in
-              tail_helper_krv (and_helper res_e1 res_e2) stack
-            )
-          
-          | Or(e1, e2) -> (
-              let res_e1 = krv_machine (create_krv_clos e1 krv_cl.table) [] in
-              let res_e2 = krv_machine (create_krv_clos e2 krv_cl.table) [] in
-              tail_helper_krv (or_helper res_e1 res_e2) stack
-            )
+        | Sub(e1, e2) -> (
+          let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
+          let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
+          let res_cl = sub_helper res_e1 res_e2 krv_cl.table true in
+          match res_cl.expr = krv_cl.expr with 
+          | false -> tail_helper_krv (KRV_Clos(sub_helper res_e1 res_e2 krv_cl.table true)) stack
+          | true  -> KRV_Clos(unload_routine cl krv_cl.table)
+        )
+        
+        | Times(e1, e2) -> (
+          let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
+          let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
+          let res_cl = times_helper res_e1 res_e2 krv_cl.table true in
+          match res_cl.expr = krv_cl.expr with 
+          | false -> tail_helper_krv (KRV_Clos(times_helper res_e1 res_e2 krv_cl.table true)) stack
+          | true  -> KRV_Clos(unload_routine cl krv_cl.table)
+        )
+        
+        | And(e1, e2) -> (
+          let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
+          let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
+          let res_cl = and_helper res_e1 res_e2 krv_cl.table true in
+          match res_cl.expr = krv_cl.expr with 
+          | false -> tail_helper_krv (KRV_Clos(and_helper res_e1 res_e2 krv_cl.table true)) stack
+          | true  -> KRV_Clos(unload_routine cl krv_cl.table)
+        )
+        
+        | Or(e1, e2) -> (
+          let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
+          let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
+          let res_cl = or_helper res_e1 res_e2 krv_cl.table true in
+          match res_cl.expr = krv_cl.expr with 
+          | false -> tail_helper_krv (KRV_Clos(or_helper res_e1 res_e2 krv_cl.table true)) stack
+          | true  -> KRV_Clos(unload_routine cl krv_cl.table)
+        )
 
-          | Eq(e1, e2) -> (
-              let res_e1 = krv_machine (create_krv_clos e1 krv_cl.table) [] in
-              let res_e2 = krv_machine (create_krv_clos e2 krv_cl.table) [] in
-              tail_helper_krv (eq_helper res_e1 res_e2) stack
-            )
+        | Eq(e1, e2) -> (
+          let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
+          let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
+          let res_cl = eq_helper res_e1 res_e2 krv_cl.table true in
+          match res_cl.expr = krv_cl.expr with 
+          | false -> tail_helper_krv (KRV_Clos(eq_helper res_e1 res_e2 krv_cl.table true)) stack
+          | true  -> KRV_Clos(unload_routine cl krv_cl.table)
+        )
 
-          | Gt(e1, e2) -> (
-              let res_e1 = krv_machine (create_krv_clos e1 krv_cl.table) [] in
-              let res_e2 = krv_machine (create_krv_clos e2 krv_cl.table) [] in
-              tail_helper_krv (gt_helper res_e1 res_e2) stack
-            )
+        | Gt(e1, e2) -> (
+          let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
+          let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
+          let res_cl = gt_helper res_e1 res_e2 krv_cl.table true in
+          match res_cl.expr = krv_cl.expr with 
+          | false -> tail_helper_krv (KRV_Clos(gt_helper res_e1 res_e2 krv_cl.table true)) stack
+          | true  -> KRV_Clos(unload_routine cl krv_cl.table)
+        )
 
-          | Lt(e1, e2) -> (
-              let res_e1 = krv_machine (create_krv_clos e1 krv_cl.table) [] in
-              let res_e2 = krv_machine (create_krv_clos e2 krv_cl.table) [] in
-              tail_helper_krv (lt_helper res_e1 res_e2) stack
-            )
+        | Lt(e1, e2) -> (
+          let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
+          let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
+          let res_cl = lt_helper res_e1 res_e2 krv_cl.table true in
+          match res_cl.expr = krv_cl.expr with 
+          | false -> tail_helper_krv (KRV_Clos(lt_helper res_e1 res_e2 krv_cl.table true)) stack
+          | true  -> KRV_Clos(unload_routine cl krv_cl.table)
+        )
 
-          | GEq(e1, e2) -> (
-              let res_e1 = krv_machine (create_krv_clos e1 krv_cl.table) [] in
-              let res_e2 = krv_machine (create_krv_clos e2 krv_cl.table) [] in
-              tail_helper_krv (geq_helper res_e1 res_e2) stack
-            )
+        | GEq(e1, e2) -> (
+          let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
+          let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
+          let res_cl = geq_helper res_e1 res_e2 krv_cl.table true in
+          match res_cl.expr = krv_cl.expr with 
+          | false -> tail_helper_krv (KRV_Clos(geq_helper res_e1 res_e2 krv_cl.table true)) stack
+          | true  -> KRV_Clos(unload_routine cl krv_cl.table)
+        )
 
-          | LEq(e1, e2) -> (
-              let res_e1 = krv_machine (create_krv_clos e1 krv_cl.table) [] in
-              let res_e2 = krv_machine (create_krv_clos e2 krv_cl.table) [] in
-              tail_helper_krv (leq_helper res_e1 res_e2) stack
-            )   
+        | LEq(e1, e2) -> (
+          let res_e1 = krv_machine (KRV_Clos(create_krv_clos e1 krv_cl.table)) [] in 
+          let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
+          let res_cl = leq_helper res_e1 res_e2 krv_cl.table true in
+          match res_cl.expr = krv_cl.expr with 
+          | false -> tail_helper_krv (KRV_Clos(leq_helper res_e1 res_e2 krv_cl.table true)) stack
+          | true  -> KRV_Clos(unload_routine cl krv_cl.table)
+        )   
 
-          | IFTE(cond_exp, true_exp, false_exp) -> (
-              let cond_res = krv_machine (create_krv_clos cond_exp krv_cl.table) [] in
-              let take_true = ( match cond_res with 
-                                | KRV_Clos (krv_cond) -> (
-                                    match krv_cond.expr with 
-                                      | Bool(b) -> b 
-                                      | _ -> raise(Invalid_Closure(KRV_M,"Closure of conditional branch must evaluate to a boolean value"))
-                                  )
-                                | _ -> raise(Invalid_Closure(KRV_M,"Invalid Closure found in Execution of kirvine machine"))
-                              ) in 
-              let branch_exp = if take_true then true_exp else false_exp in
-              tail_helper_krv (create_krv_clos branch_exp krv_cl.table) stack
-          )
-          
-          | e -> raise(Invalid_Exp(e,"Expression Not Supported yet in KRV Machine"))
-      )
-      | _ -> raise(Invalid_Closure(KRV_M,"Invalid closure encountered in Kirvine Machine"))
+        | IFTE(cond_exp, true_exp, false_exp) -> (
+          let cond_res = krv_machine (KRV_Clos(create_krv_clos cond_exp krv_cl.table)) [] in
+          let take_true = ( match cond_res with 
+                            | KRV_Clos (krv_cond) -> (
+                              match krv_cond.expr with 
+                              | Bool(b) -> b 
+                              | _ -> raise(Invalid_Closure(KRV_M,"Closure of conditional branch must evaluate to a boolean value"))
+                              )
+                            | _ -> raise(Invalid_Closure(KRV_M,"Invalid Closure found in Execution of kirvine machine"))) in 
+          let branch_exp = if take_true then true_exp else false_exp in
+          tail_helper_krv (KRV_Clos(create_krv_clos branch_exp krv_cl.table)) stack
+        )
+      
+      | e -> raise(Invalid_Exp(e,"Expression Not Supported yet in KRV Machine"))
+    )
+    | _ -> raise(Invalid_Closure(KRV_M,"Invalid closure encountered in Kirvine Machine"))
   in
   tail_helper_krv cl stack 
 

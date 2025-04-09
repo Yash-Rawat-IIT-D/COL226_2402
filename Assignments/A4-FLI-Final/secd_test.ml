@@ -11,24 +11,36 @@ let string_of_answer = function
   | Prim(p) -> string_of_prim_ans p
   | Clos(_) -> "<closure>"
 
-let run_secd_test name expr expected =
-  print_endline ("Test: " ^ name);
-  try
-    let code = compile expr in
-    let empty_env = create_new_gamma () in
-    let result = secd_machine (create_secd_stack()) empty_env code [] in
-    print_string "  Result: ";
-    print_endline (string_of_answer result);
-    print_string "  Expected: ";
-    print_endline (string_of_answer expected);
-    print_endline (if result = expected then "  ✓ PASS" else "  ✗ FAIL");
-    print_endline ""
-  with
-  | e -> 
-      print_string "  Error: ";
-      print_endline (Printexc.to_string e);
-      print_endline "  ✗ FAIL";
+  let run_secd_test name expr expected =
+    print_endline ("Test: " ^ name);
+    try
+      let code = compile expr in
+      let empty_env = create_new_gamma () in
+      let result = secd_machine (create_secd_stack()) empty_env code [] in
+      print_string "  Result: ";
+      print_endline (string_of_answer result);
+      print_string "  Expected: ";
+      print_endline (string_of_answer expected);
+      
+      let passes = match result, expected with
+        | Prim(p1), Prim(p2) -> p1 = p2
+        | Clos(ref_cl1), Clos(ref_cl2) -> (
+            match !ref_cl1, !ref_cl2 with
+            | SECD_Clos sec_cl1, SECD_Clos sec_cl2 ->
+                sec_cl1.param = sec_cl2.param && !(sec_cl1.code) = !(sec_cl2.code)
+            | _, _ -> false
+          )
+        | _, _ -> false
+      in
+      
+      print_endline (if passes then "  ✓ PASS" else "  ✗ FAIL");
       print_endline ""
+    with
+    | e -> 
+        print_string "  Error: ";
+        print_endline (Printexc.to_string e);
+        print_endline "  ✗ FAIL";
+        print_endline ""
 
 (* Test cases *)
 
@@ -147,8 +159,8 @@ let test23 = App(
 let expected23 = Clos(ref (SECD_Clos {
   param = "x";
   code = ref [MkCLOS("f", [MkCLOS("g", [MkCLOS("x", [LOOKUP "x"; LOOKUP "g"; APP; LOOKUP "f"; APP; RET])])]); APP;
-             [MkCLOS("y", [LOOKUP "y"; LDN 1; ADD; RET])];APP;
-             [MkCLOS("z", [LOOKUP "z"; LDN 2; MUL; RET])]];
+              MkCLOS("y", [LOOKUP "y"; LDN 1; ADD; RET]); APP;
+              MkCLOS("z", [LOOKUP "z"; LDN 2; MUL; RET])];
   table = ref (create_gamma (Some (ref (create_gamma (Some (ref (create_new_gamma ())))))))
 }))  (* (λf.λg.λx.f(g x)) (λy.y+1) (λz.z*2) = λx.(λy.y+1)((λz.z*2) x) *)
 
