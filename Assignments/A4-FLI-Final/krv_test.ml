@@ -25,10 +25,10 @@ let extract_answer cl =
   | _ -> Clos(ref cl)
 
   exception Mismatch of string
-  let run_test name expr expected =
+let run_test name expr gamma_ref expected =
     print_endline ("Test: " ^ name);
     try
-      let cl = create_krv_clos expr (ref (create_new_gamma ())) in
+      let cl = create_krv_clos expr gamma_ref in
       (* let _ = print_endline (string_of_lamexp expr) in *)
       let result = krv_machine (KRV_Clos cl) [] in
       let answer = extract_answer result in
@@ -61,241 +61,273 @@ let extract_answer cl =
         print_endline "  ✗ FAIL";
         print_endline ""
 
-(* Test cases *)
+(*===================================================================================*)
+(*===================================================================================*)
 
-(* Test 1: Simple numeric value *)
-let test1 = Num(42)
-let expected1 = Prim(N(42))
+(* Test 1: Simple arithmetic - Plus *)
+let test1 = Plus(Num(3), Num(4))
+let expected1 = Prim(N(7))
 
-(* Test 2: Simple boolean value *)
-let test2 = Bool(true)
-let expected2 = Prim(B(true))
+(* Test 2: Nested arithmetic *)
+let test2 = Plus(Times(Num(2), Num(3)), Num(4))
+let expected2 = Prim(N(10))
 
-(* Test 3: Simple arithmetic - Plus *)
-let test3 = Plus(Num(3), Num(4))
-let expected3 = Prim(N(7))
+(* Test 3: Boolean operations *)
+let test3 = And(Bool(true), Or(Bool(false), Bool(true)))
+let expected3 = Prim(B(true))
 
-(* Test 4: Simple arithmetic - Times *)
-let test4 = Times(Num(5), Num(6))
-let expected4 = Prim(N(30))
+(* Test 4: Conditional expression *)
+let test4 = IFTE(Gt(Num(5), Num(3)), Plus(Num(1), Num(2)), Times(Num(2), Num(3)))
+let expected4 = Prim(N(3))
 
-(* Test 5: Nested arithmetic *)
-let test5 = Plus(Times(Num(2), Num(3)), Num(4))
-let expected5 = Prim(N(10))
+(* Test 5: Simple lambda application *)
+let test5 = App(Lam("x", Plus(V("x"), Num(1))), Num(5))
+let expected5 = Prim(N(6))
 
-(* Test 6: Simple boolean operation - And *)
-let test6 = And(Bool(true), Bool(false))
-let expected6 = Prim(B(false))
-
-(* Test 7: Simple boolean operation - Or *)
-let test7 = Or(Bool(false), Bool(true))
-let expected7 = Prim(B(true))
-
-(* Test 8: Simple lambda application *)
-let test8 = App(Lam("x", V("x")), Num(5))
-let expected8 = Prim(N(5))
-
-(* Test 9: Lambda with arithmetic *)
-let test9 = App(Lam("x", Plus(V("x"), Num(1))), Num(5))
-let expected9 = Prim(N(6))
-
-(* Test 10: Nested lambda application *)
-let test10 = App(App(Lam("x", Lam("y", Plus(V("x"), V("y")))), Num(5)), Num(3))
-let expected10 = Prim(N(8))
-
-(* Test 11: Conditional expression *)
-let test11 = IFTE(Bool(true), Num(1), Num(2))
-let expected11 = Prim(N(1))
-
-(* Test 12: Conditional with comparison *)
-let test12 = IFTE(Gt(Num(5), Num(3)), Num(1), Num(2))
-let expected12 = Prim(N(1))
-
-(* Test 13: Complex expression with multiple operations *)
-let test13 = App(
-  Lam("x", 
-    IFTE(
-      Gt(V("x"), Num(10)),
-      Times(V("x"), Num(2)),
-      Plus(V("x"), Num(5))
-    )
-  ),
-  Num(7)
-)
-let expected13 = Prim(N(12))
-
-(* Test 14: Higher-order function *)
-let test14 = App(
+(* Test 6: Higher-order function *)
+let test6 = App(
   App(
     Lam("f", Lam("x", App(V("f"), V("x")))),
     Lam("y", Times(V("y"), Num(2)))
   ),
   Num(3)
 )
-let expected14 = Prim(N(6))
+let expected6 = Prim(N(6))
 
-(* Test 15: Mixed operations *)
-let test15 = App(
-  Lam("x", Plus(V("x"), Times(Num(2), Num(3)))),
-  Num(5)
+(* Test 7: Lambda with free variable *)
+let test7_env = ref (create_new_gamma())
+let _ = add_binding test7_env "y" (Prim(N(10)))
+let test7 = Lam("x", Plus(V("x"), V("y")))
+let expected7 = Clos(ref (KRV_Clos {expr = Lam("x", Plus(V("x"), V("y"))); table = test7_env}))
+
+(* Test 8: Application with environment *)
+let test8_env = ref (create_new_gamma())
+let _ = add_binding test8_env "z" (Clos(ref (KRV_Clos {expr = Num(5); table = ref (create_new_gamma())})))
+let test8 = App(Lam("x", Plus(V("x"), V("z"))), Num(3))
+let expected8 = Prim(N(8))
+
+(* Test 9: Church encoding of true with environment *)
+let test9_env = ref (create_new_gamma())
+let test9 = App(App(Lam("x", Lam("y", V("x"))), V("a")), V("b"))
+let _ = add_binding test9_env "a" (Clos(ref (KRV_Clos {expr = Num(1); table = ref (create_new_gamma())})))
+let _ = add_binding test9_env "b" (Clos(ref (KRV_Clos {expr = Num(2); table = ref (create_new_gamma())})))
+let expected9 = Prim(N(1))
+
+(* Test 10: Church encoding of successor with environment *)
+let test10_env = ref (create_new_gamma())
+(* let church_one = Lam("f", Lam("x", App(V("f"), V("x"))))
+let church_succ = Lam("n", Lam("f", Lam("x", App(V("f"), App(App(V("n"), V("f")), V("x"))))))
+let _ = add_binding test10_env "n" (Clos(ref (KRV_Clos {expr = church_one; table = ref (create_new_gamma())}))) *)
+let test10 = Lam("f", Lam("x", App(V("f"), App(App(V("n"), V("f")), V("x")))))
+let expected10 = Clos(ref (KRV_Clos {expr = Lam("f", Lam("x", App(V("f"), App(App(V("n"), V("f")), V("x"))))); table = test10_env}))
+
+let test11_env = ref (create_new_gamma())
+let _ = add_binding test11_env "y" (Clos(ref (KRV_Clos {expr = Num(10); table = ref (create_new_gamma())})))
+let test11 = App(Lam("x", Plus(V("x"), V("y"))), Num(5))
+let expected11 = Prim(N(15))
+
+let test12_env = ref (create_new_gamma())
+let _ = add_binding test12_env "z" (Clos(ref (KRV_Clos {expr = Num(3); table = ref (create_new_gamma())})))
+let test12 = App(App(Lam("x", Lam("y", Plus(V("x"), Plus(V("y"), V("z"))))), Num(1)), Num(2))
+let expected12 = Prim(N(6))
+
+
+let test13_env = ref (create_new_gamma())
+let _ = add_binding test13_env "f" (Clos(ref (KRV_Clos {expr = Lam("x", Times(V("x"), Num(2))); table = ref (create_new_gamma())})))
+let test13 = App(App(Lam("g", Lam("x", App(V("g"), App(V("f"), V("x"))))), Lam("y", Plus(V("y"), Num(1)))), Num(3))
+let expected13 = Prim(N(7))
+
+let test14_env = ref (create_new_gamma())
+let _ = add_binding test14_env "cond" (Clos(ref (KRV_Clos {expr = Bool(true); table = ref (create_new_gamma())})))
+let test14 = IFTE(V("cond"), Num(1), Num(2))
+let expected14 = Prim(N(1))
+
+let test15_env = ref (create_new_gamma())
+let _ = add_binding test15_env "a" (Clos(ref (KRV_Clos {expr = Num(2); table = ref (create_new_gamma())})))
+let _ = add_binding test15_env "b" (Clos(ref (KRV_Clos {expr = Num(3); table = ref (create_new_gamma())})))
+let test15 = Plus(Times(V("a"), V("b")), App(Lam("x", Plus(V("x"), Num(1))), Times(V("a"), V("b"))))
+let expected15 = Prim(N(13))
+
+let test16_env = ref (create_new_gamma())
+let _ = add_binding test16_env "h" (Clos(ref (KRV_Clos {expr = Lam("x", Plus(V("x"), Num(1))); table = ref (create_new_gamma())})))
+let test16 = App(App(Lam("f", Lam("x", App(V("f"), App(V("h"), V("x"))))), Lam("y", Times(V("y"), Num(2)))), Num(3))
+let expected16 = Prim(N(8))
+
+let test17_env = ref (create_new_gamma())
+let _ = add_binding test17_env "x" (Clos(ref (KRV_Clos {expr = Num(5); table = ref (create_new_gamma())})))
+let _ = add_binding test17_env "y" (Clos(ref (KRV_Clos {expr = Num(3); table = ref (create_new_gamma())})))
+let test17 = App(Lam("z", Plus(Times(V("x"), V("y")), V("z"))), App(Lam("w", Plus(V("w"), V("y"))), V("x")))
+let expected17 = Prim(N(23))
+
+let test18_env = ref (create_new_gamma())
+let _ = add_binding test18_env "p" (Clos(ref (KRV_Clos {expr = Bool(true); table = ref (create_new_gamma())})))
+let _ = add_binding test18_env "q" (Clos(ref (KRV_Clos {expr = Bool(false); table = ref (create_new_gamma())})))
+let test18 = And(V("p"), Or(V("q"), Not(V("p"))))
+let expected18 = Prim(B(false))
+
+let test19_env = ref (create_new_gamma())
+let _ = add_binding test19_env "z" (Clos(ref (KRV_Clos {expr = Num(4); table = ref (create_new_gamma())})))
+let test19 = App(App(App(Lam("x", Lam("y", Lam("w", Plus(Plus(V("x"), V("y")), Plus(V("w"), V("z")))))), Num(1)), Num(2)), Num(3))
+let expected19 = Prim(N(10))
+
+let test20_env = ref (create_new_gamma())
+let _ = add_binding test20_env "a" (Clos(ref (KRV_Clos {expr = Num(5); table = ref (create_new_gamma())})))
+let _ = add_binding test20_env "b" (Clos(ref (KRV_Clos {expr = Num(3); table = ref (create_new_gamma())})))
+let test20 = IFTE(Gt(V("a"), V("b")), 
+                  App(Lam("x", Plus(V("x"), V("a"))), V("b")),
+                  App(Lam("y", Times(V("y"), V("b"))), V("a")))
+let expected20 = Prim(N(8))
+
+
+let test21_env = ref (create_new_gamma())
+let _ = add_binding test21_env "add" (Clos(ref (KRV_Clos {expr = Lam("x", Lam("y", Plus(V("x"), V("y")))); table = ref (create_new_gamma())})))
+let test21 = App(App(App(Lam("op", Lam("a", Lam("b", App(App(V("op"), V("a")), V("b"))))), V("add")), Num(7)), Num(5))
+let expected21 = Prim(N(12))
+
+
+let test22_env = ref (create_new_gamma())
+let _ = add_binding test22_env "x" (Clos(ref (KRV_Clos {expr = Num(3); table = ref (create_new_gamma())})))
+let _ = add_binding test22_env "y" (Clos(ref (KRV_Clos {expr = Num(4); table = ref (create_new_gamma())})))
+let test22 = Plus(Times(Plus(V("x"), Num(2)), Sub(Times(V("y"), Num(2)), Num(3))), Times(Num(2), Plus(V("x"), V("y"))))
+let expected22 = Prim(N(39))
+
+
+let test23_env = ref (create_new_gamma())
+let _ = add_binding test23_env "f" (Clos(ref (KRV_Clos {expr = Lam("x", Plus(V("x"), Num(1))); table = ref (create_new_gamma())})))
+let _ = add_binding test23_env "g" (Clos(ref (KRV_Clos {expr = Lam("x", Times(V("x"), Num(2))); table = ref (create_new_gamma())})))
+let test23 = App(App(Lam("f", Lam("g", Lam("x", App(V("f"), App(V("g"), V("x")))))), V("f")), V("g"))
+let expected23 = Clos(ref (KRV_Clos {expr = Lam("x", App(V("f"), App(V("g"), V("x")))); table = test23_env}))
+
+let test24_env = ref (create_new_gamma())
+let _ = add_binding test24_env "threshold" (Clos(ref (KRV_Clos {expr = Num(10); table = ref (create_new_gamma())})))
+let test24 = IFTE(Gt(Times(Num(3), Num(4)), V("threshold")),
+                  IFTE(Eq(Plus(Num(5), Num(5)), V("threshold")),
+                       Num(1),
+                       Num(2)),
+                  IFTE(Lt(Num(5), V("threshold")),
+                       Num(3),
+                       Num(4)))
+let expected24 = Prim(N(1))
+
+(* Using Fixed point Y-Combinator to emulate factorial function - It works !*)
+let test25_env = ref (create_new_gamma())
+let factorial_body = Lam("n", IFTE(Eq(V("n"), Num(0)),
+                                  Num(1),
+                                  Times(V("n"), App(V("factorial"), Sub(V("n"), Num(1))))))
+let factorial_closure = ref (KRV_Clos {expr = factorial_body; table = test25_env})
+let _ = add_binding test25_env "factorial" (Clos(factorial_closure))
+let test25 = App(V("factorial"), Num(4))
+let expected25 = Prim(N(24))
+
+
+let test26_env = ref (create_new_gamma())
+let _ = add_binding test26_env "map" (Clos(ref (KRV_Clos {
+  expr = Lam("f", Lam("x", Lam("y", Lam("z", 
+    App(App(App(V("f"), V("x")), V("y")), V("z"))))));
+  table = ref (create_new_gamma())})))
+let _ = add_binding test26_env "combine" (Clos(ref (KRV_Clos {
+  expr = Lam("a", Lam("b", Lam("c", Plus(Plus(V("a"), V("b")), V("c")))));
+  table = ref (create_new_gamma())})))
+let test26 = App(App(App(App(V("map"), V("combine")), Num(1)), Num(2)), Num(3))
+let expected26 = Prim(N(6))
+
+
+let test27 = App(
+  Lam("x", 
+    App(
+      Lam("y", 
+        App(
+          Lam("z", 
+            App(
+              Lam("x", Plus(Plus(V("x"), V("y")), V("z"))),
+              Times(V("x"), Num(2))
+            )
+          ),
+          Times(V("x"), Num(3))
+        )
+      ),
+      Plus(V("x"), Num(1))
+    )
+  ),
+  Num(2)
 )
-let expected15 = Prim(N(11))
+let expected27 = Prim(N(13))
 
-(* Test 16: Identity function *)
-let test16 = Lam("x", V("x"))
-let expected16 = Clos(ref (KRV_Clos {expr = V("x"); table = ref (create_new_gamma ())}))
 
-(* Test 17: Application of identity function *)
-let test17 = App(Lam("x", V("x")), V("y"))
-let expected17 = Clos(ref (KRV_Clos {expr = V("y"); table = ref (create_new_gamma ())}))
+let test28_env = ref (create_new_gamma())
+let _ = add_binding test28_env "a" (Clos(ref (KRV_Clos {expr = Bool(true); table = ref (create_new_gamma())})))
+let _ = add_binding test28_env "b" (Clos(ref (KRV_Clos {expr = Bool(false); table = ref (create_new_gamma())})))
+let _ = add_binding test28_env "c" (Clos(ref (KRV_Clos {expr = Bool(true); table = ref (create_new_gamma())})))
+let test28 = Or(And(V("a"), Or(V("b"), Not(V("c")))), And(Not(V("a")), And(V("b"), V("c"))))
+let expected28 = Prim(B(false))
 
-(* Test 18: Church encoding of true *)
-let test18 = Lam("x", Lam("y", V("x")))
-let expected18 = Clos(ref (KRV_Clos {expr = Lam("y", V("x")); table = ref (create_new_gamma ())}))
-(* Test 19: Church encoding of false *)
-let test19 = Lam("x", Lam("y", V("y")))
-let expected19 = Clos(ref (KRV_Clos {expr = Lam("y", V("y")); table = ref (create_new_gamma ())}))
+let test29_env = ref (create_new_gamma())
+let _ = add_binding test29_env "base" (Clos(ref (KRV_Clos {expr = Num(10); table = ref (create_new_gamma())})))
+let _ = add_binding test29_env "multiplier" (Clos(ref (KRV_Clos {expr = Num(2); table = ref (create_new_gamma())})))
+let test29 = App(
+  App(
+    App(
+      App(
+        Lam("base", Lam("mult", Lam("a", Lam("b", 
+          Plus(Times(V("base"), V("mult")), Plus(V("a"), V("b")))
+        )))),
+        V("base")
+      ),
+      V("multiplier")
+    ),
+    Num(5)
+  ),
+  Num(7)
+)
+let expected29 = Prim(N(32))
 
-(* Test 20: Application of Church true to two arguments *)
-let test20 = App(App(test18, V("a")), V("b"))
-let expected20 = Clos(ref (KRV_Clos {expr = V("a"); table = ref (create_new_gamma ())}))
 
-(* Test 21: Application of Church false to two arguments *)
-let test21 = App(App(test19, V("a")), V("b"))
-let expected21 = Clos(ref (KRV_Clos {expr = V("b"); table = ref (create_new_gamma ())}))
+let test30_env = ref (create_new_gamma())
+let _ = add_binding test30_env "compute" (Clos(ref (KRV_Clos {
+  expr = Lam("x", Lam("y", 
+    IFTE(Gt(V("x"), V("y")),
+         Plus(V("x"), Times(V("y"), Num(2))),
+         Times(V("x"), Plus(V("y"), Num(2))))
+  ));
+  table = ref (create_new_gamma())})))
+let _ = add_binding test30_env "transform" (Clos(ref (KRV_Clos {
+  expr = Lam("f", Lam("a", Lam("b", 
+    App(App(V("f"), Times(V("a"), Num(2))), Plus(V("b"), Num(3)))
+  )));
+  table = ref (create_new_gamma())})))
+let test30 = App(App(App(V("transform"), V("compute")), Num(4)), Num(7))
+let expected30 = Prim(N(96))
 
-(* Test 22: Church encoding of successor function *)
-let test22 = Lam("n", Lam("f", Lam("x", App(V("f"), App(App(V("n"), V("f")), V("x"))))))
-let expected22 = Clos(ref (KRV_Clos {expr = Lam("f", Lam("x", App(V("f"), App(App(V("n"), V("f")), V("x"))))); table = ref (create_new_gamma ())}))
-
-(* Test 23: Application of successor to a Church numeral *)
-let church_one = Lam("f", Lam("x", App(V("f"), V("x"))))
-let test23 = App(test22, church_one)
-let expected23 = Clos(ref (KRV_Clos {expr = Lam("f", Lam("x", App(V("f"), App(App(V("n"), V("f")), V("x"))))); 
-table = 
-(let new_table = ref (create_new_gamma ()) in
- let _ = add_binding new_table "n" (Clos (ref (KRV_Clos {expr = church_one; table = ref (create_new_gamma())}))) in
- new_table
-)}))
-
-let test_free_var = Lam("x", Plus(V("x"), Times(Num(2), V("y"))))
-let expected_free_var = Clos(ref (KRV_Clos {expr = Lam("x", Plus(V("x"), Times(Num(2), V("y")))); table = ref (create_new_gamma ())}))
-
-let test_lambda_plus = App(Lam("x", Plus(V("x"), Num(2))), V("y"))
-
-let expected_lambda_plus = Clos(ref (KRV_Clos {expr = Plus(V("y"), Num(2));
- table = 
- (let new_table = ref (create_new_gamma ()) in
-  let _ = add_binding new_table "x" (Clos (ref (KRV_Clos {expr = V("y"); table = ref (create_new_gamma())}))) in
-  new_table
- )}))
-
-(* Test 24: Church encoding of numeral zero *)
-let church_zero = Lam("f", Lam("x", V("x")))
-let expected24 = Clos(ref (KRV_Clos {expr = Lam("f", Lam("x", V("x"))); table = ref (create_new_gamma ())}))
-
-(* Test 25: Church encoding of numeral two *)
-let church_two = Lam("f", Lam("x", App(V("f"), App(V("f"), V("x")))))
-let expected25 = Clos(ref (KRV_Clos {expr = Lam("f", Lam("x", App(V("f"), App(V("f"), V("x"))))); table = ref (create_new_gamma ())}))
-
-(* Test 26: Church encoding of addition *)
-let church_add = Lam("m", Lam("n", Lam("f", Lam("x", App(App(V("m"), V("f")), App(App(V("n"), V("f")), V("x")))))))
-let expected26 = Clos(ref (KRV_Clos {expr = Lam("m", Lam("n", Lam("f", Lam("x", App(App(V("m"), V("f")), App(App(V("n"), V("f")), V("x"))))))); table = ref (create_new_gamma ())}))
-
-(* Test 27: Application of Church addition to Church numerals one and two *)
-let test27 = App(App(church_add, church_one), church_two)
-let expected27 = Clos(ref (KRV_Clos {expr = Lam("f", Lam("x", App(App(V("m"), V("f")), App(App(V("n"), V("f")), V("x"))))); 
-  table = 
-  (let new_table = ref (create_new_gamma ()) in
-   let _ = add_binding new_table "m" (Clos (ref (KRV_Clos {expr = church_one; table = ref (create_new_gamma())}))) in
-   let _ = add_binding new_table "n" (Clos (ref (KRV_Clos {expr = church_two; table = ref (create_new_gamma())}))) in
-   new_table
-  )}))
-
-(* Test 28: Church encoding of multiplication *)
-let church_mult = Lam("m", Lam("n", Lam("f", App(V("m"), App(V("n"), V("f"))))))
-let expected28 = Clos(ref (KRV_Clos {expr = Lam("m", Lam("n", Lam("f", App(V("m"), App(V("n"), V("f")))))); table = ref (create_new_gamma ())}))
-
-(* Test 29: Application of Church multiplication to Church numerals two and one *)
-let test29 = App(App(church_mult, church_two), church_one)
-let expected29 = Clos(ref (KRV_Clos {expr = Lam("f", App(V("m"), App(V("n"), V("f")))); 
-  table = 
-  (let new_table = ref (create_new_gamma ()) in
-   let _ = add_binding new_table "m" (Clos (ref (KRV_Clos {expr = church_two; table = ref (create_new_gamma())}))) in
-   let _ = add_binding new_table "n" (Clos (ref (KRV_Clos {expr = church_one; table = ref (create_new_gamma())}))) in
-   new_table
-  )}))
-
-(* Test 30: Church encoding of predecessor function *)
-let church_pred = Lam("n", Lam("f", Lam("x", App(App(App(V("n"), Lam("g", Lam("h", App(V("h"), App(V("g"), V("f")))))), Lam("u", V("x"))), Lam("u", V("u"))))))
-let expected30 = Clos(ref (KRV_Clos {expr = Lam("n", Lam("f", Lam("x", App(App(App(V("n"), Lam("g", Lam("h", App(V("h"), App(V("g"), V("f")))))), Lam("u", V("x"))), Lam("u", V("u")))))); table = ref (create_new_gamma ())}))
-
-(* Test 31: Y combinator (for recursion) *)
-let y_combinator = Lam("f", App(Lam("x", App(V("f"), App(V("x"), V("x")))), Lam("x", App(V("f"), App(V("x"), V("x"))))))
-let expected31 = Clos(ref (KRV_Clos {expr = Lam("f", App(Lam("x", App(V("f"), App(V("x"), V("x")))), Lam("x", App(V("f"), App(V("x"), V("x")))))); table = ref (create_new_gamma ())}))
-
-(* Test 32: Nested application with free variables *)
-let test32 = App(App(Lam("x", Lam("y", Plus(V("x"), V("y")))), V("z")), Num(5))
-let expected32 = Clos(ref (KRV_Clos {expr = Plus(V("z"), Num(5));
-  table = 
-  (let new_table = ref (create_new_gamma ()) in
-   let _ = add_binding new_table "x" (Clos (ref (KRV_Clos {expr = V("z"); table = ref (create_new_gamma())}))) in
-   let _ = add_binding new_table "y" (Clos (ref (KRV_Clos {expr = Num(5); table = ref (create_new_gamma())}))) in
-   new_table
-  )}))
-
-(* Test 33: Church encoding of boolean NOT *)
-let church_not = Lam("b", Lam("x", Lam("y", App(App(V("b"), V("y")), V("x")))))
-let expected33 = Clos(ref (KRV_Clos {expr = Lam("b", Lam("x", Lam("y", App(App(V("b"), V("y")), V("x"))))); table = ref (create_new_gamma ())}))
-
-(* Test 34: Application of Church NOT to Church true *)
-let test34 = App(church_not, Lam("x", Lam("y", V("x"))))
-let expected34 = Clos(ref (KRV_Clos {expr = Lam("x", Lam("y", App(App(V("b"), V("y")), V("x")))); 
-  table = 
-  (let new_table = ref (create_new_gamma ()) in
-   let _ = add_binding new_table "b" (Clos (ref (KRV_Clos {expr = Lam("x", Lam("y", V("x"))); table = ref (create_new_gamma())}))) in
-   new_table
-  )}))
 
 (* Run all tests *)
 let () =
-  run_test "Simple numeric value" test1 expected1;
-  run_test "Simple boolean value" test2 expected2;
-  run_test "Simple arithmetic - Plus" test3 expected3;
-  run_test "Simple arithmetic - Times" test4 expected4;
-  run_test "Nested arithmetic" test5 expected5;
-  run_test "Simple boolean operation - And" test6 expected6;
-  run_test "Simple boolean operation - Or" test7 expected7;
-  run_test "Simple lambda application" test8 expected8;
-  run_test "Lambda with arithmetic" test9 expected9;
-  run_test "Nested lambda application" test10 expected10;
-  run_test "Conditional expression" test11 expected11;
-  run_test "Conditional with comparison" test12 expected12;
-  run_test "Complex expression with multiple operations" test13 expected13;
-  run_test "Higher-order function" test14 expected14;
-  run_test "Mixed operations" test15 expected15;
-  (* run_test "Identity Function" test16 expected16; *)
-  run_test "Application of Identity Funcion" test17 expected17;
-  (* run_test "Church Encoding of True" test18 expected18; *)
-  (* run_test "Church Encoding of False" test19 expected19; *)
-  run_test "Application of Church true to two arguments" test20 expected20;
-  run_test "Application of Church false to two arguments" test21 expected21;
-  (* run_test "Church encoding of successor function" test22 expected22; *)
-  run_test "Application of successor to a Church numeral" test23 expected23;
-  run_test "Lambda with free variable" test_free_var expected_free_var;
-  run_test "Lambda Plus" test_lambda_plus expected_lambda_plus;
-  run_test "Church encoding of numeral zero" church_zero expected24;
-  run_test "Church encoding of numeral two" church_two expected25;
-  run_test "Church encoding of addition" church_add expected26;
-  run_test "Application of Church addition to Church numerals one and two" test27 expected27;
-  run_test "Church encoding of multiplication" church_mult expected28;
-  run_test "Application of Church multiplication to Church numerals two and one" test29 expected29;
-  run_test "Church encoding of predecessor function" church_pred expected30;
-  run_test "Y combinator (for recursion)" y_combinator expected31;
-  run_test "Nested application with free variables" test32 expected32;
-  run_test "Church encoding of boolean NOT" church_not expected33;
-  run_test "Application of Church NOT to Church true" test34 expected34;    
-
-(*===================================================================================*)
-(*===================================================================================*)
-
+  run_test "Simple arithmetic - Plus" test1 (ref (create_new_gamma())) expected1;
+  run_test "Nested arithmetic" test2 (ref (create_new_gamma())) expected2;
+  run_test "Boolean operations" test3 (ref (create_new_gamma())) expected3;
+  run_test "Conditional expression" test4 (ref (create_new_gamma())) expected4;
+  run_test "Simple lambda application" test5 (ref (create_new_gamma())) expected5;
+  run_test "Higher-order function" test6 (ref (create_new_gamma())) expected6;
+  run_test "Lambda with free variable" test7 test7_env expected7;
+  run_test "Application with environment" test8 test8_env expected8;
+  run_test "Church encoding of true with environment" test9 test9_env expected9;
+  run_test "Church encoding of successor with environment" test10 (ref (create_new_gamma())) expected10;
+  run_test "Application with external binding" test11 test11_env expected11;
+  run_test "Nested lambda with external binding" test12 test12_env expected12;
+  run_test "Higher-order function with external binding" test13 test13_env expected13;
+  run_test "Conditional with external binding" test14 test14_env expected14;
+  run_test "Complex arithmetic with external bindings" test15 test15_env expected15;
+  run_test "Nested application with external binding" test16 test16_env expected16;
+  run_test "Multiple external bindings in complex expression" test17 test17_env expected17;
+  run_test "Boolean operations with external bindings" test18 test18_env expected18;
+  run_test "Lambda with multiple arguments using currying" test19 test19_env expected19;
+  run_test "Complex conditional with external bindings" test20 test20_env expected20;
+  run_test "HOF applying function to two integers" test21 test21_env expected21;
+  run_test "Complex nested arithmetic" test22 test22_env expected22;
+  run_test "Function composition" test23 test23_env expected23;
+  run_test "Nested conditionals" test24 test24_env expected24;
+  run_test "Recursive-style function" test25 test25_env expected25;
+  run_test "Complex HOF with multiple arguments" test26 test26_env expected26;
+  run_test "Nested lambdas with shared variables" test27 (ref (create_new_gamma())) expected27;
+  run_test "Complex boolean logic" test28 test28_env expected28;
+  run_test "Curried function with multiple applications" test29 test29_env expected29;
+  run_test "Complex expression combining features" test30 test30_env expected30;

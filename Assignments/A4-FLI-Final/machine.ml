@@ -123,7 +123,7 @@ let rec string_of_lamexp (e : lamexp) : string =
   match e with
   | V(var) -> "V(" ^ var ^ ")"
   | App(e1, e2) -> "App(" ^ string_of_lamexp e1 ^ ", " ^ string_of_lamexp e2 ^ ")"
-  | Lam(var, e') -> "Lam(" ^ var ^ ", " ^ string_of_lamexp e' ^ ")"
+  | Lam(var, e') -> "Lam(" ^ "V(" ^var ^  "), " ^ string_of_lamexp e' ^ ")"
   | Num(n) -> "Num(" ^ string_of_int n ^ ")"
   | Bool(b) -> "Bool(" ^ string_of_bool b ^ ")"
   | Plus(e1, e2) -> "Plus(" ^ string_of_lamexp e1 ^ ", " ^ string_of_lamexp e2 ^ ")"
@@ -157,7 +157,7 @@ let create_new_gamma () : gamma =
 
 let add_binding (table : gamma ref) (var : variable) (ans : answers) =
   Hashtbl.replace !table.bindings var ans
-  
+
 let rec lookup (table : gamma ref) (var : variable) : answers =
   match Hashtbl.find_opt !table.bindings var with
   | Some(ans) -> ans
@@ -233,6 +233,16 @@ let or_helper (cl1 : closure) (cl2 : closure) (gamma_ref : gamma ref) (over_ride
     )
   | _ -> raise(Invalid_Closure(KRV_M,"Implemented Or_helper for Kirvine Machine as of now"))
 
+let not_helper (cl : closure) (gamma_ref : gamma ref) (over_ride : bool) : krv_clos =
+  match cl with
+  | KRV_Clos krv -> (
+      match krv.expr with
+      | Bool(b) -> create_krv_clos (Bool(not b)) (gamma_ref)
+      | _ -> if over_ride then create_krv_clos (Not(krv.expr)) (gamma_ref)
+              else raise(BType_Error(krv.expr, krv.expr, "Invalid Expression for logical NOT"))
+    )
+  | _ -> raise(Invalid_Closure(KRV_M, "Implemented Not_helper for Kirvine Machine as of now"))
+
 let eq_helper (cl1 : closure) (cl2 : closure) (gamma_ref : gamma ref) (over_ride : bool) : krv_clos =
   match cl1, cl2 with
   | KRV_Clos krv1, KRV_Clos krv2 -> (
@@ -284,7 +294,7 @@ let leq_helper (cl1 : closure) (cl2 : closure) (gamma_ref : gamma ref) (over_rid
     )
   | _ -> raise(Invalid_Closure(KRV_M,"Implemented LEq_helper for Kirvine Machine as of now"))  
 
-let rec unload (cl : closure) : lamexp =
+(* let rec unload (cl : closure) : lamexp =
   match cl with
   | KRV_Clos krv_cl -> (
       match krv_cl.expr with
@@ -299,9 +309,7 @@ and unload_expr (expr : lamexp) (env : gamma ref) : lamexp =
   | V(var) -> (
       try
         match lookup env var with
-        | Clos(cl) -> 
-            (* Only substitute variables that are not bound in a lambda abstraction *)
-            V(var)  (* Keep as variable reference instead of substituting *)
+        | Clos(cl) -> V(var)     (* Actually substitute the variable *)
         | _ -> V(var)
       with Var_Not_Found _ -> V(var)
     )
@@ -311,31 +319,63 @@ and unload_expr (expr : lamexp) (env : gamma ref) : lamexp =
       (* Handle variable capture by creating a fresh environment *)
       let new_env = ref (create_gamma (Some env)) in
       Lam(x, unload_expr e new_env)
-  | e -> e  (* Other expressions remain unchanged *)
+  | e -> e  Other expressions remain unchanged *)
 
-let rec substitute_var (expr : lamexp) (env : gamma ref) : lamexp =
+let rec subs_var (expr : lamexp) (env : gamma ref) : lamexp =
   match expr with
   | V(var) -> (
-      try
-        match lookup env var with
-        | Clos(cl) -> unload !cl
-        | _ -> V(var)
-      with Var_Not_Found _ -> V(var)
-    )
-  | _ -> expr
+    try
+      match lookup env var with
+      | Clos(cl) -> (
+        match !cl with 
+        | KRV_Clos krv_inner -> (
+          (* Check if this is a self-reference to avoid infinite recursion *)
+          match krv_inner.expr with 
+          | V(x) -> V(x)
+          | _ -> subs_var krv_inner.expr env
+        )
+        | _ -> raise (Invalid_Closure(KRV_M, "foobarbaz"))
+      )
+      | _ -> V(var)
+    with Var_Not_Found _ -> V(var)
+  )
+  | App(e1, e2) -> 
+      App(subs_var e1 env, subs_var e2 env)
+  | Lam(x, e) ->
+      (* For lambda expressions, create a fresh environment to avoid variable capture *)
+      let new_env = ref (create_gamma (Some env)) in
+      
+      (* Explicitly bind x to itself to shadow any bindings in parent environments *)
+      add_binding new_env x (Clos(ref (KRV_Clos {expr = V(x); table = ref (create_new_gamma())})));
+      
+      (* Now substitute in the body with the updated environment *)
+      Lam(x, subs_var e new_env)
+  | Plus(e1, e2) ->
+      Plus(subs_var e1 env, subs_var e2 env)
+  | Times(e1, e2) ->
+      Times(subs_var e1 env, subs_var e2 env)
+  | And(e1, e2) ->
+      And(subs_var e1 env, subs_var e2 env)
+  | Or(e1, e2) ->
+      Or(subs_var e1 env, subs_var e2 env)
+  | Not(e) ->
+      Not(subs_var e env)
+  | Eq(e1, e2) ->
+      Eq(subs_var e1 env, subs_var e2 env)
+  | Gt(e1, e2) ->
+      Gt(subs_var e1 env, subs_var e2 env)
+  | e -> e  (* Other expressions remain unchanged - Bool and Num Cases *)
   
-
-(* Routine for Unloading the body of an expression of a closure with respect to a table and giving a closure *)
-let unload_routine (cl : closure) (table : gamma ref) : krv_clos = 
-  let opened_expr = unload cl in
-  (* Only substitute variables at the top level, not inside lambda bodies *)
-  let substituted_expr = 
-    match opened_expr with
-    | Lam(_, _) -> opened_expr  (* Preserve lambda abstractions *)
-    | _ -> substitute_var opened_expr table
-  in
-  let new_clos = create_krv_clos substituted_expr table in
-  new_clos
+  (* Simplified unload_routine that makes a top-level call to subs_var *)
+and unload_routine (cl : closure) (table : gamma ref) : krv_clos = 
+    match cl with
+    | KRV_Clos krv_cl -> 
+        (* Apply subs_var directly to the expression *)
+        (* let _ = print_endline ("Enter Unload :" ^ string_of_lamexp krv_cl.expr) in *)
+        let substituted_expr = subs_var krv_cl.expr krv_cl.table in
+        create_krv_clos substituted_expr table
+    | _ -> failwith "Unloading Implemented for KRV_Closure Only!"
+  
 (*===================================================================================*)
 (*===================================================================================*)
 
@@ -363,11 +403,54 @@ let rec krv_machine (cl : closure) (stack : closure list) : closure =
           | _ -> raise(Invalid_Exp(V(var), "Cannot apply a free variable to arguments"))
         )
 
-      | App(e1, e2) ->(
-          let arg_closure = create_krv_clos e2 krv_cl.table in
-          let operator_closure = create_krv_clos e1 krv_cl.table in
-          tail_helper_krv (KRV_Clos(operator_closure)) (KRV_Clos(arg_closure) :: stack)
-        )
+        | App(e1, e2) -> (
+            match e1 with
+            | Lam(_, _) | App(_, _) ->
+                (* e1 is an application that might evaluate to a lambda, proceed with standard evaluation *)
+                let arg_closure = create_krv_clos e2 krv_cl.table in
+                tail_helper_krv (KRV_Clos(create_krv_clos e1 krv_cl.table)) (KRV_Clos(arg_closure) :: stack)
+            | V(var) ->
+                (* e1 is a variable, check if it's bound to a lambda or application *)
+                (try
+                  match lookup krv_cl.table var with
+                  | Clos(clr) -> (
+                      match !clr with
+                      | KRV_Clos krv_inner -> (
+                          match krv_inner.expr with
+                          | Lam(_, _) | App(_, _) ->
+                              (* Variable is bound to a lambda or application, proceed with standard evaluation *)
+                              let arg_closure = create_krv_clos e2 krv_cl.table in
+                              let op_closure = create_krv_clos e1 krv_cl.table in
+                              tail_helper_krv (KRV_Clos op_closure) (KRV_Clos(arg_closure) :: stack)
+                          | _ ->
+                              (* Return partially evaluated application *)
+                              if stack = [] then
+                                  let _ = print_endline ("HO :" ^ string_of_lamexp krv_cl.expr) in
+                                  KRV_Clos(unload_routine cl krv_cl.table)
+                              else
+                                  tail_helper_krv (KRV_Clos(create_krv_clos e1 krv_cl.table)) (KRV_Clos(create_krv_clos e2 krv_cl.table) :: stack)
+                      )
+                      | _ -> 
+                          if stack = [] then
+                              KRV_Clos(unload_routine cl krv_cl.table)
+                          else
+                              tail_helper_krv (KRV_Clos(create_krv_clos e1 krv_cl.table)) (KRV_Clos(create_krv_clos e2 krv_cl.table) :: stack)
+                  )
+                  | _ -> raise (Invalid_Answer(KRV_M,"foobarbaz error message"))
+                with Var_Not_Found _ ->
+                    if stack = [] then
+                        KRV_Clos(unload_routine cl krv_cl.table)
+                    else
+                        tail_helper_krv (KRV_Clos(create_krv_clos e1 krv_cl.table)) (KRV_Clos(create_krv_clos e2 krv_cl.table) :: stack)
+                )
+            | _ ->
+                (* Neither e1 nor e2 is a lambda or an application or a variable bound to a lambda/application *)
+                if stack = [] then
+                    KRV_Clos(unload_routine cl krv_cl.table)
+                else
+                    tail_helper_krv (KRV_Clos(create_krv_clos e1 krv_cl.table)) (KRV_Clos(create_krv_clos e2 krv_cl.table) :: stack)
+          )
+      
 
       | Lam(x, e') -> (
           match stack with
@@ -389,7 +472,7 @@ let rec krv_machine (cl : closure) (stack : closure list) : closure =
           let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
           let res_cl = plus_helper res_e1 res_e2 krv_cl.table true in
           match res_cl.expr = krv_cl.expr with 
-          | false -> tail_helper_krv (KRV_Clos(plus_helper res_e1 res_e2 krv_cl.table true)) stack
+          | false -> tail_helper_krv (KRV_Clos(res_cl)) stack
           | true  -> KRV_Clos(unload_routine cl krv_cl.table)
         )
 
@@ -398,7 +481,7 @@ let rec krv_machine (cl : closure) (stack : closure list) : closure =
         let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
         let res_cl = sub_helper res_e1 res_e2 krv_cl.table true in
         match res_cl.expr = krv_cl.expr with 
-        | false -> tail_helper_krv (KRV_Clos(sub_helper res_e1 res_e2 krv_cl.table true)) stack
+        | false -> tail_helper_krv (KRV_Clos(res_cl)) stack
         | true  -> KRV_Clos(unload_routine cl krv_cl.table)
       )
       
@@ -407,7 +490,7 @@ let rec krv_machine (cl : closure) (stack : closure list) : closure =
         let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
         let res_cl = times_helper res_e1 res_e2 krv_cl.table true in
         match res_cl.expr = krv_cl.expr with 
-        | false -> tail_helper_krv (KRV_Clos(times_helper res_e1 res_e2 krv_cl.table true)) stack
+        | false -> tail_helper_krv (KRV_Clos(res_cl)) stack
         | true  -> KRV_Clos(unload_routine cl krv_cl.table)
       )
       
@@ -416,7 +499,15 @@ let rec krv_machine (cl : closure) (stack : closure list) : closure =
         let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
         let res_cl = and_helper res_e1 res_e2 krv_cl.table true in
         match res_cl.expr = krv_cl.expr with 
-        | false -> tail_helper_krv (KRV_Clos(and_helper res_e1 res_e2 krv_cl.table true)) stack
+        | false -> tail_helper_krv (KRV_Clos(res_cl)) stack
+        | true  -> KRV_Clos(unload_routine cl krv_cl.table)
+      )
+
+      | Not(e) -> (
+        let res_e = krv_machine (KRV_Clos(create_krv_clos e krv_cl.table)) [] in 
+        let res_cl = not_helper res_e krv_cl.table true in
+        match res_cl.expr = krv_cl.expr with 
+        | false -> tail_helper_krv (KRV_Clos(res_cl)) stack
         | true  -> KRV_Clos(unload_routine cl krv_cl.table)
       )
       
@@ -425,7 +516,7 @@ let rec krv_machine (cl : closure) (stack : closure list) : closure =
         let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
         let res_cl = or_helper res_e1 res_e2 krv_cl.table true in
         match res_cl.expr = krv_cl.expr with 
-        | false -> tail_helper_krv (KRV_Clos(or_helper res_e1 res_e2 krv_cl.table true)) stack
+        | false -> tail_helper_krv (KRV_Clos(res_cl)) stack
         | true  -> KRV_Clos(unload_routine cl krv_cl.table)
       )
 
@@ -434,7 +525,7 @@ let rec krv_machine (cl : closure) (stack : closure list) : closure =
         let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
         let res_cl = eq_helper res_e1 res_e2 krv_cl.table true in
         match res_cl.expr = krv_cl.expr with 
-        | false -> tail_helper_krv (KRV_Clos(eq_helper res_e1 res_e2 krv_cl.table true)) stack
+        | false -> tail_helper_krv (KRV_Clos(res_cl)) stack
         | true  -> KRV_Clos(unload_routine cl krv_cl.table)
       )
 
@@ -443,7 +534,7 @@ let rec krv_machine (cl : closure) (stack : closure list) : closure =
         let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
         let res_cl = gt_helper res_e1 res_e2 krv_cl.table true in
         match res_cl.expr = krv_cl.expr with 
-        | false -> tail_helper_krv (KRV_Clos(gt_helper res_e1 res_e2 krv_cl.table true)) stack
+        | false -> tail_helper_krv (KRV_Clos(res_cl)) stack
         | true  -> KRV_Clos(unload_routine cl krv_cl.table)
       )
 
@@ -452,7 +543,7 @@ let rec krv_machine (cl : closure) (stack : closure list) : closure =
         let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
         let res_cl = lt_helper res_e1 res_e2 krv_cl.table true in
         match res_cl.expr = krv_cl.expr with 
-        | false -> tail_helper_krv (KRV_Clos(lt_helper res_e1 res_e2 krv_cl.table true)) stack
+        | false -> tail_helper_krv (KRV_Clos(res_cl)) stack
         | true  -> KRV_Clos(unload_routine cl krv_cl.table)
       )
 
@@ -461,7 +552,7 @@ let rec krv_machine (cl : closure) (stack : closure list) : closure =
         let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
         let res_cl = geq_helper res_e1 res_e2 krv_cl.table true in
         match res_cl.expr = krv_cl.expr with 
-        | false -> tail_helper_krv (KRV_Clos(geq_helper res_e1 res_e2 krv_cl.table true)) stack
+        | false -> tail_helper_krv (KRV_Clos(res_cl)) stack
         | true  -> KRV_Clos(unload_routine cl krv_cl.table)
       )
 
@@ -470,7 +561,7 @@ let rec krv_machine (cl : closure) (stack : closure list) : closure =
         let res_e2 = krv_machine (KRV_Clos(create_krv_clos e2 krv_cl.table)) [] in 
         let res_cl = leq_helper res_e1 res_e2 krv_cl.table true in
         match res_cl.expr = krv_cl.expr with 
-        | false -> tail_helper_krv (KRV_Clos(leq_helper res_e1 res_e2 krv_cl.table true)) stack
+        | false -> tail_helper_krv (KRV_Clos(res_cl)) stack
         | true  -> KRV_Clos(unload_routine cl krv_cl.table)
       )   
 
