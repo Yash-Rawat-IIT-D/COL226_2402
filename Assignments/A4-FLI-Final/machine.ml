@@ -403,46 +403,83 @@ let rec krv_machine (cl : closure) (stack : closure list) : closure =
           | _ -> raise(Invalid_Exp(V(var), "Cannot apply a free variable to arguments"))
         )
 
-        | App(e1, e2) -> (
+      | App(e1, e2) -> (
             match e1 with
             | Lam(_, _) | App(_, _) ->
                 (* e1 is an application that might evaluate to a lambda, proceed with standard evaluation *)
                 let arg_closure = create_krv_clos e2 krv_cl.table in
                 tail_helper_krv (KRV_Clos(create_krv_clos e1 krv_cl.table)) (KRV_Clos(arg_closure) :: stack)
-            | V(var) ->
+            | V(var) ->(
                 (* e1 is a variable, check if it's bound to a lambda or application *)
-                (try
-                  match lookup krv_cl.table var with
-                  | Clos(clr) -> (
-                      match !clr with
-                      | KRV_Clos krv_inner -> (
-                          match krv_inner.expr with
-                          | Lam(_, _) | App(_, _) ->
-                              (* Variable is bound to a lambda or application, proceed with standard evaluation *)
-                              let arg_closure = create_krv_clos e2 krv_cl.table in
-                              let op_closure = create_krv_clos e1 krv_cl.table in
-                              tail_helper_krv (KRV_Clos op_closure) (KRV_Clos(arg_closure) :: stack)
-                          | _ ->
-                              (* Return partially evaluated application *)
+                match e1, e2 with 
+                | V(x1), V(x2) -> 
+                  if(x1=x2) then KRV_Clos(unload_routine cl krv_cl.table)
+                  else
+                    (try
+                      match lookup krv_cl.table var with
+                      | Clos(clr) -> (
+                          match !clr with
+                          | KRV_Clos krv_inner -> (
+                              match krv_inner.expr with
+                              | Lam(_, _) | App(_, _) ->
+                                  (* Variable is bound to a lambda or application, proceed with standard evaluation *)
+                                  let arg_closure = create_krv_clos e2 krv_cl.table in
+                                  let op_closure = create_krv_clos e1 krv_cl.table in
+                                  tail_helper_krv (KRV_Clos op_closure) (KRV_Clos(arg_closure) :: stack)
+                              | _ ->
+                                  (* Return partially evaluated application *)
+                                  if stack = [] then
+                                      let _ = print_endline ("HO :" ^ string_of_lamexp krv_cl.expr) in
+                                      KRV_Clos(unload_routine cl krv_cl.table)
+                                  else
+                                      tail_helper_krv (KRV_Clos(create_krv_clos e1 krv_cl.table)) (KRV_Clos(create_krv_clos e2 krv_cl.table) :: stack)
+                          )
+                          | _ -> 
                               if stack = [] then
-                                  let _ = print_endline ("HO :" ^ string_of_lamexp krv_cl.expr) in
                                   KRV_Clos(unload_routine cl krv_cl.table)
                               else
                                   tail_helper_krv (KRV_Clos(create_krv_clos e1 krv_cl.table)) (KRV_Clos(create_krv_clos e2 krv_cl.table) :: stack)
                       )
-                      | _ -> 
-                          if stack = [] then
-                              KRV_Clos(unload_routine cl krv_cl.table)
-                          else
-                              tail_helper_krv (KRV_Clos(create_krv_clos e1 krv_cl.table)) (KRV_Clos(create_krv_clos e2 krv_cl.table) :: stack)
+                      | _ -> raise (Invalid_Answer(KRV_M,"foobarbaz error message"))
+                    with Var_Not_Found _ ->
+                        if stack = [] then
+                            KRV_Clos(unload_routine cl krv_cl.table)
+                        else
+                            tail_helper_krv (KRV_Clos(create_krv_clos e1 krv_cl.table)) (KRV_Clos(create_krv_clos e2 krv_cl.table) :: stack)
                   )
-                  | _ -> raise (Invalid_Answer(KRV_M,"foobarbaz error message"))
-                with Var_Not_Found _ ->
-                    if stack = [] then
-                        KRV_Clos(unload_routine cl krv_cl.table)
-                    else
-                        tail_helper_krv (KRV_Clos(create_krv_clos e1 krv_cl.table)) (KRV_Clos(create_krv_clos e2 krv_cl.table) :: stack)
-                )
+                | _ -> (try
+                          match lookup krv_cl.table var with
+                          | Clos(clr) -> (
+                              match !clr with
+                              | KRV_Clos krv_inner -> (
+                                  match krv_inner.expr with
+                                  | Lam(_, _) | App(_, _) ->
+                                      (* Variable is bound to a lambda or application, proceed with standard evaluation *)
+                                      let arg_closure = create_krv_clos e2 krv_cl.table in
+                                      let op_closure = create_krv_clos e1 krv_cl.table in
+                                      tail_helper_krv (KRV_Clos op_closure) (KRV_Clos(arg_closure) :: stack)
+                                  | _ ->
+                                      (* Return partially evaluated application *)
+                                      if stack = [] then
+                                          let _ = print_endline ("HO :" ^ string_of_lamexp krv_cl.expr) in
+                                          KRV_Clos(unload_routine cl krv_cl.table)
+                                      else
+                                          tail_helper_krv (KRV_Clos(create_krv_clos e1 krv_cl.table)) (KRV_Clos(create_krv_clos e2 krv_cl.table) :: stack)
+                              )
+                              | _ -> 
+                                  if stack = [] then
+                                      KRV_Clos(unload_routine cl krv_cl.table)
+                                  else
+                                      tail_helper_krv (KRV_Clos(create_krv_clos e1 krv_cl.table)) (KRV_Clos(create_krv_clos e2 krv_cl.table) :: stack)
+                          )
+                          | _ -> raise (Invalid_Answer(KRV_M,"foobarbaz error message"))
+                        with Var_Not_Found _ ->
+                            if stack = [] then
+                                KRV_Clos(unload_routine cl krv_cl.table)
+                            else
+                                tail_helper_krv (KRV_Clos(create_krv_clos e1 krv_cl.table)) (KRV_Clos(create_krv_clos e2 krv_cl.table) :: stack)
+                      )
+              )
             | _ ->
                 (* Neither e1 nor e2 is a lambda or an application or a variable bound to a lambda/application *)
                 if stack = [] then

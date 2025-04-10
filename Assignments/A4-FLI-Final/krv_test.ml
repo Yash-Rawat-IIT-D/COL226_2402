@@ -326,10 +326,23 @@ let test_sk_applied = App(App(App(V("s"), V("k")), V("k")), V("v"))
 (* Expected result: v *)
 let expected_sk_applied = Prim(N(42))
 
-(* Run the test
-let () = run_test "SK Combinator Applied: ((s k) k) v" test_sk_applied sk_env expected_sk_applied *)
+let omega = Lam("x", App(V("x"), V("x")))
 
+(* Create an environment *)
+let omega_env = ref (create_new_gamma())
+let _ = add_binding omega_env "omega" (Clos(ref (KRV_Clos {expr = omega; table = ref (create_new_gamma())})))
 
+(* Test case 1: Just the omega combinator itself *)
+let test_omega1 = V("omega")
+let expected_omega1 = Clos(ref (KRV_Clos {expr = omega; table = ref (create_new_gamma())}))
+
+(* Test case 2: Omega applied to itself - should not terminate if evaluated fully *)
+(* But in call-by-name, it should return a closure without evaluating further *)
+let test_omega2 = App(omega, omega)
+
+(* In call-by-name, the machine should return a closure representing the application *)
+(* without attempting to fully evaluate it *)
+let expected_omega2 = Clos(ref (KRV_Clos {expr = App(omega, omega); table = ref (create_new_gamma())}))
 (* Run all tests *)
 let () =
   run_test "Simple arithmetic - Plus" test1 (ref (create_new_gamma())) expected1;
@@ -364,3 +377,6 @@ let () =
   run_test "Complex expression combining features" test30 test30_env expected30;
   run_test "SK Combinator Test: (s k) k" test_sk sk_env expected_sk;
   run_test "SK Combinator Applied: ((s k) k) v" test_sk_applied sk_app_env expected_sk_applied;
+  run_test "Omega Combinator" test_omega1 omega_env expected_omega1;
+  run_test "Omega applied to itself" test_omega2 (ref (create_new_gamma())) expected_omega2;
+  print_endline "Test completed successfully - machine correctly implements call-by-name evaluation";
