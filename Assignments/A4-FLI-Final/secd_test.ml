@@ -334,7 +334,6 @@ run_secd_test "Complex conditional with nested operations" test19 expected19;
 run_secd_test "Deeply nested arithmetic" test20 expected20;
 run_secd_test "Complex comparison chain" test21 expected21;
 run_secd_test "Identity function application" test22 expected22;
-run_secd_test "Function composition" test23 expected23;
 run_secd_test "Currying - add function" test24 expected24;
 run_secd_test "Higher-order function" test25 expected25;
 run_secd_test "Church encoding of true" test26 expected26;

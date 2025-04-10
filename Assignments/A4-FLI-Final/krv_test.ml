@@ -299,6 +299,37 @@ let test30 = App(App(App(V("transform"), V("compute")), Num(4)), Num(7))
 let expected30 = Prim(N(96))
 
 
+(* Define the K and S combinators *)
+let k = Lam("x", Lam("y", V("x")))
+let s = Lam("x", Lam("y", Lam("z", App(App(V("x"), V("z")), App(V("y"), V("z"))))))
+
+(* Create an environment with k and s bound *)
+let sk_env = ref (create_new_gamma())
+let _ = add_binding sk_env "k" (Clos(ref (KRV_Clos {expr = k; table = ref (create_new_gamma())})))
+let _ = add_binding sk_env "s" (Clos(ref (KRV_Clos {expr = s; table = ref (create_new_gamma())})))
+
+(* Test case: (s k) k *)
+let test_sk = App(App(V("s"), V("k")), V("k"))
+
+(* Expected result: λz.k z (k z) = λz.z *)
+(* Since k z returns z and discards its second argument, (k z) (k z) simplifies to z *)
+let expected_sk = Clos(ref (KRV_Clos {expr = Lam("z", App(App(V("k"), V("z")), App(V("k"), V("z")))); table = ref (create_new_gamma())}))
+
+(* Test case: ((s k) k) v *)
+
+let sk_app_env = ref (create_new_gamma ())
+let _ = add_binding sk_app_env "k" (Clos(ref (KRV_Clos {expr = k; table = ref (create_new_gamma())})))
+let _ = add_binding sk_app_env "s" (Clos(ref (KRV_Clos {expr = s; table = ref (create_new_gamma())})))
+let _ = add_binding sk_app_env "v"  (Clos(ref (KRV_Clos {expr = Num(42); table = ref (create_new_gamma())})))
+let test_sk_applied = App(App(App(V("s"), V("k")), V("k")), V("v"))
+
+(* Expected result: v *)
+let expected_sk_applied = Prim(N(42))
+
+(* Run the test
+let () = run_test "SK Combinator Applied: ((s k) k) v" test_sk_applied sk_env expected_sk_applied *)
+
+
 (* Run all tests *)
 let () =
   run_test "Simple arithmetic - Plus" test1 (ref (create_new_gamma())) expected1;
@@ -331,3 +362,5 @@ let () =
   run_test "Complex boolean logic" test28 test28_env expected28;
   run_test "Curried function with multiple applications" test29 test29_env expected29;
   run_test "Complex expression combining features" test30 test30_env expected30;
+  run_test "SK Combinator Test: (s k) k" test_sk sk_env expected_sk;
+  run_test "SK Combinator Applied: ((s k) k) v" test_sk_applied sk_app_env expected_sk_applied;

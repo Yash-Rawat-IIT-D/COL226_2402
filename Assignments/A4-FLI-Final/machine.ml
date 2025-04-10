@@ -193,7 +193,7 @@ let plus_helper (cl1 : closure) (cl2 : closure) (gamma_ref : gamma ref) (over_ri
     )
     | _ -> raise(Invalid_Closure(KRV_M,"Implemented Plus_helper for Kirvine Machine as of now"))
 
- let sub_helper (cl1 : closure) (cl2 : closure) (gamma_ref : gamma ref) (over_ride : bool) : krv_clos =
+let sub_helper (cl1 : closure) (cl2 : closure) (gamma_ref : gamma ref) (over_ride : bool) : krv_clos =
   match cl1, cl2 with
   | KRV_Clos krv1, KRV_Clos krv2 -> (
       match krv1.expr, krv2.expr with
@@ -454,7 +454,7 @@ let rec krv_machine (cl : closure) (stack : closure list) : closure =
 
       | Lam(x, e') -> (
           match stack with
-          | [] ->(KRV_Clos(unload_routine cl krv_cl.table))
+          | [] ->(KRV_Clos(unload_routine cl krv_cl.table)) (* Potential to change ?*)
           | arg_cl :: rest_stack ->
               (* Extend the environment with the argument binding *)
               let new_gamma = create_gamma (Some krv_cl.table) in
@@ -578,7 +578,7 @@ let rec krv_machine (cl : closure) (stack : closure list) : closure =
           tail_helper_krv (KRV_Clos(create_krv_clos branch_exp krv_cl.table)) stack
         )
       
-      | e -> raise(Invalid_Exp(e,"Expression Not Supported yet in KRV Machine"))
+      (*|  e -> raise(Invalid_Exp(e,"Expression Not Supported yet in KRV Machine")) *)
     )
     | _ -> raise(Invalid_Closure(KRV_M,"Invalid closure encountered in Kirvine Machine"))
   in
